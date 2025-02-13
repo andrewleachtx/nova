@@ -1,11 +1,6 @@
-cmake_minimum_required(VERSION 3.16...3.28)
+cmake_minimum_required(VERSION 3.22...3.28)
 
-project(neuromorphic-visualizer LANGUAGES CXX C)
-
-# TODO: Maybe remove
-# set(CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}/lib/cmake" CACHE PATH "")
-# set(CMAKE_LIBRARY_PATH "$ENV{CONDA_PREFIX}/lib" CACHE PATH "")
-# link_directories("$ENV{CONDA_PREFIX}/lib")
+project(NOVA LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -23,10 +18,11 @@ endif()
 
 add_executable(main src/main.cpp)
 
-# Find installed dv-processing.
-ADD_SUBDIRECTORY(include/dv-processing EXCLUDE_FROM_ALL)
+# Include new headers
+target_include_directories(main PUBLIC "${CMAKE_SOURCE_DIR}/include")
 
-# link your targets against the library
+# dv-processing APIs
+find_package(dv-processing CONFIG REQUIRED)
 target_link_libraries(main
     PRIVATE
     dv::processing

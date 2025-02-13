@@ -1,5 +1,3 @@
-*/imgui/
-*/src/include/imgui/
 *.out
 glew-2.1.0/
 glfw-3.3.9/
@@ -24,8 +22,9 @@ bench/*.txt
 *.ncu-rep
 docs/demo/
 
-imgui/
 *.ini
+
+vcpkg_installed/
 
 extra/
 build/
