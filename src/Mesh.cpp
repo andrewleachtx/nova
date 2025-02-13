@@ -46,8 +46,8 @@ void Mesh::loadMesh(const string &meshName, bool isMesh) {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
 	std::vector<tinyobj::material_t> materials;
-	string errStr;
-	bool rc = tinyobj::LoadObj(&attrib, &shapes, &materials, &errStr, meshName.c_str());
+	string warnStr, errStr;
+	bool rc = tinyobj::LoadObj(&attrib, &shapes, &materials, &warnStr, &errStr, meshName.c_str());
 	if(!rc) {
 		cerr << errStr << endl;
 	} else {
