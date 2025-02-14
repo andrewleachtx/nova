@@ -1,40 +1,45 @@
-// #pragma once
-// #ifndef INCLUDE_H
-// #define INCLUDE_H
+#pragma once
+#ifndef INCLUDE_H
+#define INCLUDE_H
 
-// // Constants & STL
-// #include <cassert>
-// #include <cstring>
-// #define _USE_MATH_DEFINES
-// #include <cmath>
-// #include <iostream>
-// #include <vector>
-// #include <random>
+/* TODO: Doubt it's a concern, but if it is we can remove this file. It is better to just declare in the
+         file what you need in addition to forward declarations where you can in header files.
+*/
 
-// // GLEW / GLFW
-// #define GLEW_STATIC
-// #include <GL/glew.h>
-// #include <GLFW/glfw3.h>
+// Constants & STL
+#include <cassert>
+#include <cstring>
+#define _USE_MATH_DEFINES
+#include <cmath>
+#include <iostream>
+#include <vector>
+#include <random>
 
-// // GLM //
-// #define GLM_FORCE_RADIANS
-// #include <glm/glm.hpp>
-// #include <glm/gtc/type_ptr.hpp>
+// GLEW / GLFW
+#define GLEW_STATIC
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
-// // Dear ImGui //
-// #include "imgui/imgui.h"
-// #include "imgui/imgui_impl_glfw.h"
-// #include "imgui/imgui_impl_opengl3.h"
+// Eigen / GLM //
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <Eigen/Dense>
 
-// // CUSTOM CLASSES //
-// #include "GLSL.h"
-// #include "FreeCam.h"
-// #include "MatrixStack.h"
-// #include "Program.h"
-// #include "Mesh.h"
+// Dear ImGui //
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
 
-// // UTILS //
-// #include "include/utils.h"
-// #include "constants.h"
+// CUSTOM CLASSES //
+#include "GLSL.h"
+#include "FreeCam.h"
+#include "MatrixStack.h"
+#include "Program.h"
+#include "Mesh.h"
+#include "BPMaterial.h"
 
-// #endif
+// UTILS //
+#include "utils.h"
+
+#endif

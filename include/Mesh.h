@@ -26,7 +26,7 @@ class Mesh
 public:
 	Mesh();
 	virtual ~Mesh();
-	void loadMesh(const std::string &meshName, bool isSpring);
+	void loadMesh(const std::string &meshName, bool isSpring=false);
 	void fitToUnitBox();
 	void init();
 

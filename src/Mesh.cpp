@@ -41,6 +41,7 @@ Mesh::~Mesh() {
     }
 }
 
+// TODO: Can remove spring logic, although it shouldn't affect efficiency
 void Mesh::loadMesh(const string &meshName, bool isMesh) {
 	// Load geometry
 	tinyobj::attrib_t attrib;

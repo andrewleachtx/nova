@@ -5,4 +5,4 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-./build/Debug/NOVA.exe
+./build/Debug/NOVA.exe "./resources" "./data"
