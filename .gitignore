@@ -22,6 +22,8 @@ bench/*.txt
 *.ncu-rep
 docs/demo/
 
+data/
+
 *.ini
 
 vcpkg_installed/

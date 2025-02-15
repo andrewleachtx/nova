@@ -5,4 +5,6 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-./build/Debug/NOVA.exe "./resources" "./data"
+# ./build/Debug/NOVA.exe "./resources" "./data/test_data.aedat4"
+./build/Debug/NOVA.exe "./resources" "./data/toy.aedat"
+./build/Debug/NOVA.exe "./resources" "./data/EBBINNOT_AEDAT4/Recording/20180711_Site1_3pm_12mm_01.aedat4"

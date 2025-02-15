@@ -22,7 +22,7 @@ using std::shared_ptr, std::make_shared;
 using std::vector, std::string;
 using glm::vec3;
 
-Program genPhongProg(string resource_dir) {
+Program genPhongProg(const string &resource_dir) {
     Program prog = Program();
     prog.setShaderNames(resource_dir + "phong_vsh.glsl", resource_dir + "phong_fsh.glsl");
     prog.setVerbose(true);
@@ -166,7 +166,7 @@ void resize_callback(GLFWwindow *window, int width, int height) {
 }
 
 // Looks for the biggest monitor
-bool genBiggestWindow(GLFWwindow*& window, string window_name="GLFW Window") {
+bool genBiggestWindow(GLFWwindow *&window, const string &window_name) {
     int num_monitors;
     GLFWmonitor** monitors = glfwGetMonitors(&num_monitors);
 
