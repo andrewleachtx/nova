@@ -30,6 +30,7 @@ vector<vector<glm::vec3> > g_evtParticles;
 vector<size_t> g_evtParticleSizes;
 long long g_initTimestamp, g_lastTimestamp;
 int g_focusedEvent = -1;
+float g_particleScale(1.0f);
 
 /*
     We need to load the particle data from the .aedat4 in data/
@@ -40,7 +41,7 @@ static void loadEventParticles(const std::string &data_filepath) {
     dv::io::MonoCameraRecording reader(data_filepath);
 
     // TODO: Could dynamically change this within
-    size_t mod_freq = 1000;
+    size_t mod_freq = 100;
     size_t biggest_sz = 0;
 
     // https://dv-processing.inivation.com/rel_1_7/reading_data.html#read-events-from-a-file
@@ -61,7 +62,6 @@ static void loadEventParticles(const std::string &data_filepath) {
                 if (i % mod_freq == 0) {
                     // Should be relative
                     float relative_timestamp = static_cast<float>(event.timestamp() - g_initTimestamp);
-                    printf("relative timestep = %f\n", relative_timestamp);
                     g_evtParticles.back().push_back(glm::vec3((float)event.x(), (float)event.y(), relative_timestamp));
                 }
             }
@@ -70,6 +70,9 @@ static void loadEventParticles(const std::string &data_filepath) {
             g_evtParticleSizes.push_back(g_evtParticles.back().size());
         }
     }
+
+    printf("There are %zu events\n", g_evtParticles.size());
+    printf("biggest_sz = %zu\n", biggest_sz);
 
     // Should rescale with padding, can do normalization x - min / max - min
     for (size_t i = 0; i < g_evtParticles.size(); i++) {
@@ -130,24 +133,25 @@ static inline glm::vec3 getTimeColor(float timestamp) {
 static void drawParticles(MatrixStack &MV, MatrixStack &P) {
     Program &prog = g_progScene;
 
-    float particle_scale = 0.75f;
-    
     // TODO: Use instanced rendering for speedup, we know buffer sz
     prog.bind();
     MV.pushMatrix();
         for (size_t i = 0; i < g_evtParticles.size(); i++) {
-            // FIXME: Unsafe comparison, but should underflow and still be far larger.
-            if (g_focusedEvent != i) {
-                for (size_t j = 0; j < g_evtParticleSizes[i]; j++) {
-                    MV.pushMatrix();
-                        MV.translate(g_evtParticles[i][j]);
-                        MV.scale(particle_scale);
+            for (size_t j = 0; j < g_evtParticleSizes[i]; j++) {
+                MV.pushMatrix();
+                    MV.translate(g_evtParticles[i][j]);
+                    MV.scale(g_particleScale);
 
-                        glm::vec3 lerp_color = getTimeColor(g_evtParticles[i][j].z);
-                        sendToPhongShader(prog, P, MV, g_lightPos, lerp_color, g_lightMat);
-                        g_meshSphere.draw(prog);
-                    MV.popMatrix();
-                }
+                    glm::vec3 lerp_color = getTimeColor(g_evtParticles[i][j].z);
+
+                    // FIXME: Unsafe comparison, but should underflow and still be far larger.
+                    if (g_focusedEvent != -1 && g_focusedEvent != i) {
+                        lerp_color *= 0.15f;   
+                    }
+
+                    sendToPhongShader(prog, P, MV, g_lightPos, lerp_color, g_lightMat);
+                    g_meshSphere.draw(prog);
+                MV.popMatrix();
             }
         }
     MV.popMatrix();
@@ -217,7 +221,7 @@ static void render() {
     P.popMatrix();
     MV.popMatrix();
 
-    drawGUI(g_freecam, g_fps);
+    drawGUI(g_freecam, g_fps, g_particleScale, g_focusedEvent, g_evtParticles.size());
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -226,7 +230,6 @@ static void render() {
 }
 
 int main(int argc, char** argv) {
-    // TODO: Can maybe make a GUI for selecting stuff 
     if (argc < 3) {
         cout << "Usage: ./NOVA <resource_dir> <data_filepath>" << endl;
         return 0;

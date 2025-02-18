@@ -21,7 +21,7 @@ TODO
 Run `vcpkg install --triplet x64-windows` in the project root (takes a while, go do something else and come back)
 
 ### Building
-`cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake -DCMAKE_BUILD_TYPE=Release` builds in release mode, which doesn't come with debugging symbols.
+`cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" -DCMAKE_BUILD_TYPE=Release` builds in release mode, which doesn't come with debugging symbols.
 
 # Running
 ## Using Visual Studio GUI

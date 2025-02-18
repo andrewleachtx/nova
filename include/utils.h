@@ -27,7 +27,8 @@ void char_callback(GLFWwindow *window, unsigned int key);
 void resize_callback(GLFWwindow *window, int width, int height);
 bool genBiggestWindow(GLFWwindow *&window, const std::string &window_name="GLFW Window");
 
-void drawGUI(const FreeCam &camera, float fps);
+void drawGUI(const FreeCam& camera, float fps, float &particle_scale, int &focused_evt, size_t num_evts);
+
 float randFloat();
 glm::vec3 randXYZ();
 
