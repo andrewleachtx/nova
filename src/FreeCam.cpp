@@ -42,7 +42,7 @@ FreeCam::FreeCam() {
     vel = vec3(0.0f);
     float CAM_SPEED_SCALE(150.0f);
     acceleration = 5.0f * CAM_SPEED_SCALE;
-    deceleration = 4.0f * CAM_SPEED_SCALE;
+    deceleration = 4.5f * CAM_SPEED_SCALE;
     maxSpeed = 4.0f * CAM_SPEED_SCALE;
 }
 FreeCam::~FreeCam() {}
