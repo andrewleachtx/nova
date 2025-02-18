@@ -22,7 +22,7 @@ using std::shared_ptr, std::make_shared;
 using std::vector, std::string;
 using glm::vec3;
 
-Program genPhongProg(string resource_dir) {
+Program genPhongProg(const string &resource_dir) {
     Program prog = Program();
     prog.setShaderNames(resource_dir + "phong_vsh.glsl", resource_dir + "phong_fsh.glsl");
     prog.setVerbose(true);
@@ -166,7 +166,7 @@ void resize_callback(GLFWwindow *window, int width, int height) {
 }
 
 // Looks for the biggest monitor
-bool genBiggestWindow(GLFWwindow*& window, string window_name="GLFW Window") {
+bool genBiggestWindow(GLFWwindow *&window, const string &window_name) {
     int num_monitors;
     GLFWmonitor** monitors = glfwGetMonitors(&num_monitors);
 
@@ -234,7 +234,7 @@ float getMaxFPS() {
 }
 
 ImGuiWindowFlags wflags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize; 
-void drawGUI(const FreeCam& camera, float fps) {
+void drawGUI(const FreeCam& camera, float fps, float &particle_scale, int &focused_evt, size_t num_evts) {
     ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
     ImGui::Begin("Debug", nullptr, wflags);
         const glm::vec3& cam_pos = camera.pos;
@@ -251,6 +251,8 @@ void drawGUI(const FreeCam& camera, float fps) {
         const glm::vec3& cam_vel = camera.vel;
         ImGui::Text("Camera Speed: %.3f", glm::length(cam_vel));
         ImGui::Text("Current Time: %.3f", glfwGetTime());
+
+        ImGui::SliderFloat("Particle Scale", &particle_scale, 0.1f, 2.5f);
     ImGui::End();
 
     // Top Right FPS Counter //
@@ -267,6 +269,21 @@ void drawGUI(const FreeCam& camera, float fps) {
         ImGui::Text("Max FPS: %.1f", maxFPS);
 
         ImGui::PlotLines("##FPS History", fps_historyBuf.data(), fps_historyBuf.size(), fps_bufIdx, nullptr, 0.0f, maxFPS + 10.0f, ImVec2(0, 80));
+    ImGui::End();
+
+    // Event Selection //
+    ImGui::SetNextWindowPos(ImVec2(0, 150), ImGuiCond_Always);
+    ImGui::Begin("Event Selection", nullptr, wflags);
+        ImGui::Text("Choose Event To Query:");
+        if (ImGui::Button("Clear")) {
+            focused_evt = -1;
+        }
+        if (num_evts > 0) {
+            ImGui::SliderInt("Focused Event", &focused_evt, -1, static_cast<int>(num_evts) - 1);
+        }
+        else {
+            ImGui::Text("No events loaded");
+        }
     ImGui::End();
 } 
 
