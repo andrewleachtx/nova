@@ -94,6 +94,7 @@ static void init() {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& imgui_io = ImGui::GetIO(); (void)imgui_io;
+        imgui_io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
         imgui_io.Fonts->AddFontFromFileTTF(string(g_resourceDir + "/CascadiaCode.ttf").c_str(), 20.0f);
         ImGui::StyleColorsDark();
