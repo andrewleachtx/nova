@@ -129,7 +129,7 @@ static void init() {
         loadEventParticles(g_dataFilepath);
 
     GLSL::checkError();
-    printf("[DEBUG] Made it through init()");
+    cout << "[DEBUG] Made it out of init()" << endl;
 }
 
 // Simply interpolate green->red based on g_initTimestamp and g_lastTimestamp.
@@ -137,6 +137,7 @@ static inline glm::vec3 getTimeColor(float timestamp) {
     // t = x - min / max - min (that said, all the evt timestamps are normalized - initTimestamp)
     return glm::vec3(timestamp, 0.0f, 1.0f - timestamp);
 }
+
 
 static void drawParticles(MatrixStack &MV, MatrixStack &P) {
     Program &prog = g_progScene;
@@ -247,12 +248,12 @@ int main(int argc, char** argv) {
     g_resourceDir = argv[1] + string("/");
     g_dataFilepath = argv[2];
 
+    glfwSetErrorCallback(error_callback);
+
     if (!glfwInit()) {
         cerr << "Failed to initialize GLFW" << endl;
         return -1;
     }
-
-    glfwSetErrorCallback(error_callback);
 
     // GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     // const GLFWvidmode* mode = glfwGetVideoMode(monitor);
@@ -297,11 +298,12 @@ int main(int argc, char** argv) {
     }
 
     // Cleanup //
-    glfwDestroyWindow(g_window);
-    glfwTerminate();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+    
+    glfwDestroyWindow(g_window);
+    glfwTerminate();
 
     return 0;
 }
