@@ -93,10 +93,18 @@ static void init() {
     // ImGui //
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
-        ImGuiIO& imgui_io = ImGui::GetIO(); (void)imgui_io;
-        imgui_io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-        imgui_io.Fonts->AddFontFromFileTTF(string(g_resourceDir + "/CascadiaCode.ttf").c_str(), 20.0f);
+        io.Fonts->AddFontFromFileTTF(string(g_resourceDir + "/CascadiaCode.ttf").c_str(), 20.0f);
+
+        ImGuiStyle& style = ImGui::GetStyle();
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+            style.WindowRounding = 0.0f;
+            style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+        }
+
         ImGui::StyleColorsDark();
         ImGui_ImplGlfw_InitForOpenGL(g_window, true);
         ImGui_ImplOpenGL3_Init("#version 430");
@@ -129,7 +137,6 @@ static inline glm::vec3 getTimeColor(float timestamp) {
     // t = x - min / max - min (that said, all the evt timestamps are normalized - initTimestamp)
     return glm::vec3(timestamp, 0.0f, 1.0f - timestamp);
 }
-
 
 static void drawParticles(MatrixStack &MV, MatrixStack &P) {
     Program &prog = g_progScene;
@@ -182,6 +189,7 @@ static void render() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+    ImGui::ShowDemoWindow();
 
     // Get frame buffer size //
         int width, height;
@@ -239,12 +247,12 @@ int main(int argc, char** argv) {
     g_resourceDir = argv[1] + string("/");
     g_dataFilepath = argv[2];
 
-    glfwSetErrorCallback(error_callback);
-
     if (!glfwInit()) {
         cerr << "Failed to initialize GLFW" << endl;
         return -1;
     }
+
+    glfwSetErrorCallback(error_callback);
 
     // GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     // const GLFWvidmode* mode = glfwGetVideoMode(monitor);
@@ -288,9 +296,12 @@ int main(int argc, char** argv) {
         glfwPollEvents();
     }
 
-    // GLFW Cleanup //
+    // Cleanup //
     glfwDestroyWindow(g_window);
-    glfwTerminate();    
+    glfwTerminate();
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     return 0;
 }
