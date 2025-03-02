@@ -90,13 +90,6 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
             glfwSetWindowShouldClose(window, GL_TRUE);
         }
     }
-    else if (action == GLFW_PRESS) {
-        wc->freecam->keyDown(key);
-    }
-    else if (action == GLFW_RELEASE) {
-        wc->freecam->keyUp(key);
-    }
-
 }
 
 // This function is called when the mouse is clicked
@@ -116,7 +109,7 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 
         if (!*(wc->is_cursorVisible)) {
             /* TODO: DO WE NEED THIS? */
-            wc->freecam->mouseClicked((float)xmouse, (float)ymouse, shift, ctrl, alt);
+            wc->camera->mouseClicked((float)xmouse, (float)ymouse, shift, ctrl, alt);
 
             if (button == GLFW_MOUSE_BUTTON_LEFT) {
             }
@@ -133,10 +126,9 @@ void cursor_position_callback(GLFWwindow* window, double xmouse, double ymouse) 
     int width, height;
     glfwGetWindowSize(window, &width, &height);
 
-    /* FIXME: I don't know if I need WantCaptureMouse here */
-    // if (!(*(wc->is_cursorVisible)) && !ImGui::GetIO().WantCaptureMouse) {
-    if (!(*(wc->is_cursorVisible))) {
-        wc->freecam->mouseMoved((float)xmouse, (float)ymouse);
+    int state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+    if (state == GLFW_PRESS && !(*(wc->is_cursorVisible))) {
+        wc->camera->mouseMoved((float)xmouse, (float)ymouse);
     }
 }
 
@@ -162,7 +154,7 @@ void resize_callback(GLFWwindow *window, int width, int height) {
     }
     
     // Update the aspect ratio of the camera
-    wc->freecam->aspect = (float)width / (float)height;
+    wc->camera->aspect = (float)width / (float)height;
 }
 
 // Looks for the biggest monitor
@@ -234,7 +226,7 @@ float getMaxFPS() {
 }
 
 ImGuiWindowFlags wflags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize; 
-void drawGUI(const FreeCam& camera, float fps, float &particle_scale, int &focused_evt, size_t num_evts) {
+void drawGUI(const Camera& camera, float fps, float &particle_scale, int &focused_evt, size_t num_evts) {
     ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
     ImGui::Begin("Debug", nullptr, wflags);
         const glm::vec3& cam_pos = camera.pos;
@@ -247,10 +239,6 @@ void drawGUI(const FreeCam& camera, float fps, float &particle_scale, int &focus
         ImGui::TextColored(IMCOLOR_BLUE, "%.3f", cam_pos.z);
         ImGui::SameLine(0.0f, 0.0f);
         ImGui::Text(")");
-
-        const glm::vec3& cam_vel = camera.vel;
-        ImGui::Text("Camera Speed: %.3f", glm::length(cam_vel));
-        ImGui::Text("Current Time: %.3f", glfwGetTime());
 
         ImGui::SliderFloat("Particle Scale", &particle_scale, 0.1f, 2.5f);
     ImGui::End();

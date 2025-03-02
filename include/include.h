@@ -33,7 +33,7 @@
 
 // CUSTOM CLASSES //
 #include "GLSL.h"
-#include "FreeCam.h"
+#include "Camera.h"
 #include "MatrixStack.h"
 #include "Program.h"
 #include "Mesh.h"

@@ -13,7 +13,7 @@ using namespace std;
 
 // We can pass in a user pointer to callback functions - shouldn't require an updater; vars have inf lifespan
 GLFWwindow *g_window;
-FreeCam g_freecam;
+Camera g_camera;
 bool g_cursorVisible(false);
 bool g_keyToggles[256] = {false};
 float g_fps, g_lastRenderTime(0.0f);
@@ -109,9 +109,9 @@ static void init() {
         ImGui_ImplGlfw_InitForOpenGL(g_window, true);
         ImGui_ImplOpenGL3_Init("#version 430");
 
-    // FreeCam //
-        g_freecam = FreeCam();
-        g_freecam.setInitPos(0.0f, 0.0f, 0.0f);
+    // Camera //
+        g_camera = Camera();
+        g_camera.setInitPos(0.0f, 0.0f, 0.0f);
 
     // Shader Programs //
         g_progScene = genPhongProg(g_resourceDir);
@@ -137,7 +137,6 @@ static inline glm::vec3 getTimeColor(float timestamp) {
     // t = x - min / max - min (that said, all the evt timestamps are normalized - initTimestamp)
     return glm::vec3(timestamp, 0.0f, 1.0f - timestamp);
 }
-
 
 static void drawParticles(MatrixStack &MV, MatrixStack &P) {
     Program &prog = g_progScene;
@@ -195,15 +194,12 @@ static void render() {
     // Get frame buffer size //
         int width, height;
         glfwGetFramebufferSize(g_window, &width, &height);
-        g_freecam.aspect = (float)width / (float)height;
+        g_camera.aspect = (float)width / (float)height;
 
     // Update FPS counter //
         float dt = t - g_lastRenderTime;
         g_fps = 1.0f / dt;
         g_lastRenderTime = t;
-
-    // Update camera //
-        g_freecam.update(dt);
 
     // Enable wireframe
     if (g_keyToggles[(unsigned)'t']) {
@@ -221,8 +217,8 @@ static void render() {
     MatrixStack P, MV;
     P.pushMatrix();
     MV.pushMatrix();
-    g_freecam.applyProjectionMatrix(P);
-    g_freecam.applyViewMatrix(MV);
+    g_camera.applyProjectionMatrix(P);
+    g_camera.applyViewMatrix(MV);
 
     // TODO: Draw something basic
     drawSun(MV, P);
@@ -231,7 +227,7 @@ static void render() {
     P.popMatrix();
     MV.popMatrix();
 
-    drawGUI(g_freecam, g_fps, g_particleScale, g_focusedEvent, g_evtParticles.size());
+    drawGUI(g_camera, g_fps, g_particleScale, g_focusedEvent, g_evtParticles.size());
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -266,7 +262,7 @@ int main(int argc, char** argv) {
     }
 
     // Placement above init() assumes parameters are initialized, and that wc has inf lifetime 
-    WindowContext wc = { &g_freecam, &g_cursorVisible, g_keyToggles };
+    WindowContext wc = { &g_camera, &g_cursorVisible, g_keyToggles };
     glfwSetWindowUserPointer(g_window, &wc);
     glfwMakeContextCurrent(g_window);
 

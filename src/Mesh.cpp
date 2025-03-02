@@ -41,8 +41,7 @@ Mesh::~Mesh() {
     }
 }
 
-// TODO: Can remove spring logic, although it shouldn't affect efficiency
-void Mesh::loadMesh(const string &meshName, bool isMesh) {
+void Mesh::loadMesh(const string &meshName) {
 	// Load geometry
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
@@ -52,19 +51,6 @@ void Mesh::loadMesh(const string &meshName, bool isMesh) {
 	if(!rc) {
 		cerr << errStr << endl;
 	} else {
-        struct TinyObjIdxHash {
-            size_t operator()(const tinyobj::index_t& idx) const {
-                return hash<int>()(idx.vertex_index) ^ hash<int>()(idx.normal_index) ^ hash<int>()(idx.texcoord_index);
-            }
-        };
-
-        struct TinyObjIdxEqual {
-            bool operator()(const tinyobj::index_t& a, const tinyobj::index_t& b) const {
-                return a.vertex_index == b.vertex_index && a.normal_index == b.normal_index && a.texcoord_index == b.texcoord_index;
-            }
-        };
-
-        unordered_map<tinyobj::index_t, unsigned int, TinyObjIdxHash, TinyObjIdxEqual> unique_vertices;
 		min_XYZ = glm::vec3(POSINF);
 		max_XYZ = glm::vec3(NEGINF);
 		for (size_t s = 0; s < shapes.size(); s++) {
@@ -76,7 +62,6 @@ void Mesh::loadMesh(const string &meshName, bool isMesh) {
 				for(size_t v = 0; v < fv; v++) {
 					// access to vertex
 					tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
-                    if (isMesh || unique_vertices.count(idx) == 0) {
                         posBuf.push_back(attrib.vertices[3*idx.vertex_index+0]);
                         posBuf.push_back(attrib.vertices[3*idx.vertex_index+1]);
                         posBuf.push_back(attrib.vertices[3*idx.vertex_index+2]);
@@ -91,8 +76,6 @@ void Mesh::loadMesh(const string &meshName, bool isMesh) {
                             texBuf.push_back(attrib.texcoords[2*idx.texcoord_index+1]);
                         }
 
-                        unique_vertices[idx] = unique_vertices.size();
-
                         // Update bounds
                         min_XYZ.x = min(min_XYZ.x, attrib.vertices[3*idx.vertex_index+0]);
                         min_XYZ.y = min(min_XYZ.y, attrib.vertices[3*idx.vertex_index+1]);
@@ -101,10 +84,6 @@ void Mesh::loadMesh(const string &meshName, bool isMesh) {
                         max_XYZ.x = max(max_XYZ.x, attrib.vertices[3*idx.vertex_index+0]);
                         max_XYZ.y = max(max_XYZ.y, attrib.vertices[3*idx.vertex_index+1]);
                         max_XYZ.z = max(max_XYZ.z, attrib.vertices[3*idx.vertex_index+2]);
-                    }
-
-                    //* Important to store this because we don't want duplicate springs later
-                    indexBuf.push_back(unique_vertices[idx]);
 				}
 
 				index_offset += fv;
