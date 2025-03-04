@@ -15,6 +15,7 @@ using namespace std;
 GLFWwindow *g_window;
 Camera g_camera;
 bool g_cursorVisible(false);
+bool g_isMainviewportHovered(false);
 bool g_keyToggles[256] = {false};
 float g_fps, g_lastRenderTime(0.0f);
 string g_resourceDir, g_dataFilepath;
@@ -60,14 +61,31 @@ static void drawGUIDockspace() {
     ImGui::End();
 }
 
+// TODO: Move this and drawGUIDockspace into utils.h/.cpp
 static void drawGUI2(const Camera& camera, float fps, float &particle_scale, int &focused_evt) {
     drawGUIDockspace();
 
     ImGui::Begin("Main Viewport");
-        const glm::vec3& cam_pos = camera.pos;
-        ImGui::Text("Camera (World): (%.3f, %.3f, %.3f)", cam_pos.x, cam_pos.y, cam_pos.z);
-        ImGui::Separator();
-        ImGui::SliderFloat("Particle Scale", &particle_scale, 0.1f, 2.5f);
+        const glm::vec3 &cam_pos = camera.pos;
+        
+        // Have to do a bounding check to make sure the mouse is really within the actual main viewport img for cursor callbacks
+        ImVec2 image_sz = ImGui::GetContentRegionAvail();
+        ImVec2 fbo_imageSz = ImVec2(g_mainSceneFBO.getFBOwidth(), g_mainSceneFBO.getFBOheight());
+        float img_aspect = image_sz.x / image_sz.y;
+        float fbo_aspect = fbo_imageSz.x / fbo_imageSz.y;
+
+        ImVec2 final_sz;
+        if (fbo_aspect > img_aspect) {
+            // Effectively the height is the limiting factor here, so we should max height and adjust width
+            final_sz = ImVec2(image_sz.x * fbo_aspect, image_sz.x);
+        }
+        else {
+            // Width limiting factor, adjust height
+            final_sz = ImVec2(image_sz.x, image_sz.x / fbo_aspect);
+        }
+
+        ImGui::Image((ImTextureID)g_mainSceneFBO.getColorTexture(), final_sz, ImVec2(0, 1), ImVec2(1, 0));
+        g_isMainviewportHovered = ImGui::IsItemHovered();
     ImGui::End();
 
     ImGui::Begin("Load");
@@ -80,7 +98,11 @@ static void drawGUI2(const Camera& camera, float fps, float &particle_scale, int
         // TODO: Cache recent files and state?
     ImGui::End();
 
-    ImGui::Begin("FPS Info");
+    ImGui::Begin("Info");
+        ImGui::Text("Camera (World): (%.3f, %.3f, %.3f)", cam_pos.x, cam_pos.y, cam_pos.z);
+        ImGui::Separator();
+        ImGui::SliderFloat("Particle Scale", &particle_scale, 0.1f, 2.5f);
+        ImGui::Separator();
         ImGui::Text("FPS: %.1f", fps);
         // ImGui::PlotLines("FPS History", fps_historyBuf.data(), fps_historyBuf.size(), fps_bufIdx, nullptr, 0.0f, maxFPS + 10.0f, ImVec2(0, 80));
     ImGui::End();
@@ -211,22 +233,16 @@ static void render() {
         
         drawGUI2(g_camera, g_fps, g_particleScale, g_focusedEvent);
     
-    ImGui::Begin("Main Viewport");
-        ImGui::Image((ImTextureID)g_mainSceneFBO.getColorTexture(),
-                     ImVec2((float)width, (float)height),
-                     ImVec2(0, 1), ImVec2(1, 0));
-    ImGui::End();
-    
     // Render ImGui //
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         ImGuiIO& io = ImGui::GetIO();
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-            GLFWwindow* backup_current_context = glfwGetCurrentContext();
+            GLFWwindow* context_backup = glfwGetCurrentContext();
             ImGui::UpdatePlatformWindows();
             ImGui::RenderPlatformWindowsDefault();
-            glfwMakeContextCurrent(backup_current_context);
+            glfwMakeContextCurrent(context_backup);
         }
 
     GLSL::checkError(GET_FILE_LINE);
@@ -251,7 +267,7 @@ int main(int argc, char** argv) {
     // GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     // const GLFWvidmode* mode = glfwGetVideoMode(monitor);
     // g_window = glfwCreateWindow(mode->width, mode->height, "NOVA", monitor, nullptr);
-    g_window = glfwCreateWindow(1280, 720, "NOVA", nullptr, nullptr);
+    g_window = glfwCreateWindow(1920, 1080, "NOVA", nullptr, nullptr);
     if (!g_window) {
         cerr << "Failed to create window" << endl;
         glfwTerminate();
@@ -259,7 +275,7 @@ int main(int argc, char** argv) {
     }
 
     // Placement above init() assumes parameters are initialized, and that wc has inf lifetime 
-    WindowContext wc = { &g_camera, &g_cursorVisible, g_keyToggles };
+    WindowContext wc = { &g_camera, &g_cursorVisible, g_keyToggles, &g_isMainviewportHovered, &g_mainSceneFBO };
     glfwSetWindowUserPointer(g_window, &wc);
     glfwMakeContextCurrent(g_window);
 

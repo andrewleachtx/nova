@@ -94,10 +94,15 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
 // This function is called when the mouse is clicked
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
-    if (ImGui::GetIO().WantCaptureMouse) {
+    // if (ImGui::GetIO().WantCaptureMouse) {
+    //     return;
+    // }
+
+    WindowContext* wc = static_cast<WindowContext*>(glfwGetWindowUserPointer(window));
+
+    if (!*(wc->is_mainViewportHovered)) {
         return;
     }
-    WindowContext* wc = static_cast<WindowContext*>(glfwGetWindowUserPointer(window));
 
 	double xmouse, ymouse;
 	glfwGetCursorPos(window, &xmouse, &ymouse);
@@ -125,6 +130,10 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 // This function is called when the mouse moves
 void cursor_position_callback(GLFWwindow* window, double xmouse, double ymouse) {
     WindowContext* wc = static_cast<WindowContext*>(glfwGetWindowUserPointer(window));
+
+    if (!*(wc->is_mainViewportHovered)) {
+        return;
+    }
 
     int width, height;
     glfwGetWindowSize(window, &width, &height);
@@ -158,6 +167,9 @@ void resize_callback(GLFWwindow *window, int width, int height) {
     
     // Update the aspect ratio of the camera
     wc->camera->aspect = (float)width / (float)height;
+
+    // Update the FBO
+    wc->mainSceneFBO->resize(width, height);
 }
 
 // Looks for the biggest monitor

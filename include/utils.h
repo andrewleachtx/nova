@@ -8,11 +8,14 @@
 #include <string>
 
 class Program;
+class MainScene;
 
 struct WindowContext {
     Camera* camera;
     bool* is_cursorVisible;
     bool* key_toggles;
+    bool* is_mainViewportHovered;
+    MainScene* mainSceneFBO;
 };
 
 Program genPhongProg(const std::string &resource_dir);

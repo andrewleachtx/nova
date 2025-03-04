@@ -22,10 +22,13 @@ public:
     void unbind() const;
 
     GLuint getColorTexture() const;
-
+    GLuint getFBOwidth() const { return width; }
+    GLuint getFBOheight() const { return height; }
+    
 private:
     GLuint fbo;
     GLuint colorTexture;
     GLuint depthRBO;
-    int width, height;
+    int width;
+    int height;
 };
