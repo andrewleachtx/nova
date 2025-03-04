@@ -39,6 +39,7 @@
 #include "Mesh.h"
 #include "BPMaterial.h"
 #include "EventData.h"
+#include "MainScene.h"
 
 // UTILS //
 #include "utils.h"

@@ -19,6 +19,8 @@ bool g_keyToggles[256] = {false};
 float g_fps, g_lastRenderTime(0.0f);
 string g_resourceDir, g_dataFilepath;
 
+MainScene g_mainSceneFBO;
+
 Mesh g_meshSphere, g_meshSquare, g_meshCube, g_meshWeirdSquare;
 Program g_progScene;
 
@@ -33,6 +35,7 @@ float g_particleScale(1.0f);
 
 // https://github.com/ocornut/imgui/wiki/Docking
 // Creates required dockspace before rendering ImGui windows on top
+// TODO: Can we add power save ? https://github.com/ocornut/imgui/wiki/Implementing-Power-Save,-aka-Idling-outside-of-ImGui
 static void drawGUIDockspace() {
     static bool is_fullscreen = true;
     static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
@@ -132,6 +135,10 @@ static void init() {
         g_lightCol = glm::vec3((187 / 255.0f), (178 / 255.0f), (233 / 255.0f));
         g_lightMat = BPMaterial(g_lightCol, g_lightCol, g_lightCol, 100.0f);
 
+        int width, height;
+        glfwGetFramebufferSize(g_window, &width, &height);
+        g_mainSceneFBO.initialize(width, height);
+
     // Load .aedat events into EventData object //
         g_eventData = make_shared<EventData>();
         g_eventData->initParticlesFromFile(g_dataFilepath);
@@ -159,13 +166,6 @@ static void drawSun(MatrixStack &MV, MatrixStack &P) {
 static void render() {
     float t = static_cast<float>(glfwGetTime());
 
-    // Build ImGui Docking //
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-        
-        drawGUI2(g_camera, g_fps, g_particleScale, g_focusedEvent);
-
     // Get frame buffer size //
         int width, height;
         glfwGetFramebufferSize(g_window, &width, &height);
@@ -184,6 +184,7 @@ static void render() {
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
+    g_mainSceneFBO.bind();
     glViewport(0, 0, width, height);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
@@ -201,7 +202,21 @@ static void render() {
 
     P.popMatrix();
     MV.popMatrix();
+    g_mainSceneFBO.unbind();
 
+    // Build ImGui Docking & Main Viewport //
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        
+        drawGUI2(g_camera, g_fps, g_particleScale, g_focusedEvent);
+    
+    ImGui::Begin("Main Viewport");
+        ImGui::Image((ImTextureID)g_mainSceneFBO.getColorTexture(),
+                     ImVec2((float)width, (float)height),
+                     ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::End();
+    
     // Render ImGui //
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

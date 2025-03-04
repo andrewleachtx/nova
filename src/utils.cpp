@@ -94,6 +94,9 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
 // This function is called when the mouse is clicked
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
+    if (ImGui::GetIO().WantCaptureMouse) {
+        return;
+    }
     WindowContext* wc = static_cast<WindowContext*>(glfwGetWindowUserPointer(window));
 
 	double xmouse, ymouse;
