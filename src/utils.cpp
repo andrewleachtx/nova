@@ -226,7 +226,7 @@ float getMaxFPS() {
 }
 
 ImGuiWindowFlags wflags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize; 
-void drawGUI(const Camera& camera, float fps, float &particle_scale, int &focused_evt, size_t num_evts) {
+void drawGUI(const Camera& camera, float fps, float &particle_scale, int &focused_evt) {
     ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
     ImGui::Begin("Debug", nullptr, wflags);
         const glm::vec3& cam_pos = camera.pos;
@@ -266,12 +266,12 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, int &focuse
         if (ImGui::Button("Clear")) {
             focused_evt = -1;
         }
-        if (num_evts > 0) {
-            ImGui::SliderInt("Focused Event", &focused_evt, -1, static_cast<int>(num_evts) - 1);
-        }
-        else {
-            ImGui::Text("No events loaded");
-        }
+        // if (num_evts > 0) {
+            // ImGui::SliderInt("Focused Event", &focused_evt, -1, static_cast<int>(num_evts) - 1);
+        // }
+        // else {
+        //     ImGui::Text("No events loaded");
+        // }
     ImGui::End();
 } 
 

@@ -2,8 +2,8 @@
 #ifndef INCLUDE_H
 #define INCLUDE_H
 
-/* TODO: Doubt it's a concern, but if it is we can remove this file. It is better to just declare in the
-         file what you need in addition to forward declarations where you can in header files.
+/* TODO: Doubt it's an immediate concern, but if it is we can remove this file. It is better to just
+        declare in the file what you need in addition to forward declarations where you can in header files.
 */
 
 // Constants & STL
@@ -38,6 +38,7 @@
 #include "Program.h"
 #include "Mesh.h"
 #include "BPMaterial.h"
+#include "EventData.h"
 
 // UTILS //
 #include "utils.h"
