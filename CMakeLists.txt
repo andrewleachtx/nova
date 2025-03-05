@@ -5,10 +5,6 @@ project(NOVA LANGUAGES CXX C)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
-endif()
-
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
   set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
@@ -22,21 +18,35 @@ IF(${SOL})
 ELSE()
 	FILE(GLOB_RECURSE SOURCES "src/*.cpp")
 	FILE(GLOB_RECURSE HEADERS "include/*.h")
-
-    FILE(GLOB_RECURSE IMGUI_SOURCES "include/imgui/*.cpp")
-    FILE(GLOB_RECURSE IMGUI_HEADERS "include/imgui/*.h")
-
-    LIST(APPEND SOURCES ${IMGUI_SOURCES})
-    LIST(APPEND HEADERS ${IMGUI_HEADERS})
 ENDIF()
 FILE(GLOB_RECURSE GLSL "resources/*.glsl")
 
+set(IMGUI_DIR "${CMAKE_SOURCE_DIR}/include/imgui")
+
+file(GLOB IMGUI_CORE_SOURCES
+    "${IMGUI_DIR}/imgui.cpp"
+    "${IMGUI_DIR}/imgui_draw.cpp"
+    "${IMGUI_DIR}/imgui_tables.cpp"
+    "${IMGUI_DIR}/imgui_widgets.cpp"
+    "${IMGUI_DIR}/imgui_demo.cpp"
+)
+
+file(GLOB IMGUI_BACKENDS
+    "${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp"
+    "${IMGUI_DIR}/backends/imgui_impl_glfw.cpp"
+)
+
+list(APPEND SOURCES ${IMGUI_CORE_SOURCES} ${IMGUI_BACKENDS})
+
 # print cpp sources
-message(STATUS "CPP_SOURCES: ${CPP_SOURCES}")
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCES} ${HEADERS} ${GLSL})
 
 # Include new headers
-target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/include")
+target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
+    "${CMAKE_SOURCE_DIR}/include"
+    "${CMAKE_SOURCE_DIR}/include/imgui"
+    "${CMAKE_SOURCE_DIR}/include/imgui/backends"
+)
 
 # !!! A large portion of the remaining code references a CMakeLists.txt offered by
 # !!! Dr. Shinjiro Sueda's computer graphics and animation courses - credit due

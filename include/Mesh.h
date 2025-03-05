@@ -26,7 +26,7 @@ class Mesh
 public:
 	Mesh();
 	virtual ~Mesh();
-	void loadMesh(const std::string &meshName, bool isSpring=false);
+	void loadMesh(const std::string &meshName);
 	void fitToUnitBox();
 	void init();
 
@@ -35,14 +35,13 @@ public:
     const unsigned getPosBufID() const;
     const unsigned getPosBufSize() const;
 
-    //! THESE ARE NOT CONST GETTERS!!! YOU COULD BE UPDATING
-    std::vector<unsigned int>& getIndexBuf() { return indexBuf; }
-    std::vector<float>& getPosBuf() { return posBuf; }
-	std::vector<float>& getNorBuf() { return norBuf; }
+    // ! These are not const getters, you could be updating ! //
+    std::vector<unsigned int> &getIdxBufRef() { return indexBuf; }
+    std::vector<float> &getPosBufRef() { return posBuf; }
+	std::vector<float> &getNorBufRef() { return norBuf; }
     
     glm::vec3 getMinXYZ() const { return min_XYZ; }
 	glm::vec3 getMaxXYZ() const { return max_XYZ; }
-	
 private:
     // Stores indices of vertices
     std::vector<unsigned int> indexBuf;

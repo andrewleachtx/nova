@@ -2,8 +2,8 @@
 #ifndef INCLUDE_H
 #define INCLUDE_H
 
-/* TODO: Doubt it's a concern, but if it is we can remove this file. It is better to just declare in the
-         file what you need in addition to forward declarations where you can in header files.
+/* TODO: Doubt it's an immediate concern, but if it is we can remove this file. It is better to just
+        declare in the file what you need in addition to forward declarations where you can in header files.
 */
 
 // Constants & STL
@@ -28,16 +28,18 @@
 
 // Dear ImGui //
 #include "imgui/imgui.h"
-#include "imgui/imgui_impl_glfw.h"
-#include "imgui/imgui_impl_opengl3.h"
+#include "imgui/backends/imgui_impl_glfw.h"
+#include "imgui/backends/imgui_impl_opengl3.h"
 
 // CUSTOM CLASSES //
 #include "GLSL.h"
-#include "FreeCam.h"
+#include "Camera.h"
 #include "MatrixStack.h"
 #include "Program.h"
 #include "Mesh.h"
 #include "BPMaterial.h"
+#include "EventData.h"
+#include "MainScene.h"
 
 // UTILS //
 #include "utils.h"

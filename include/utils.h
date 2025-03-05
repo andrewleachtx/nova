@@ -8,11 +8,14 @@
 #include <string>
 
 class Program;
+class MainScene;
 
 struct WindowContext {
-    FreeCam* freecam;
+    Camera* camera;
     bool* is_cursorVisible;
     bool* key_toggles;
+    bool* is_mainViewportHovered;
+    MainScene* mainSceneFBO;
 };
 
 Program genPhongProg(const std::string &resource_dir);
@@ -27,7 +30,7 @@ void char_callback(GLFWwindow *window, unsigned int key);
 void resize_callback(GLFWwindow *window, int width, int height);
 bool genBiggestWindow(GLFWwindow *&window, const std::string &window_name="GLFW Window");
 
-void drawGUI(const FreeCam& camera, float fps, float &particle_scale, int &focused_evt, size_t num_evts);
+void drawGUI(const Camera &camera, float fps, float &particle_scale, int &focused_evt);
 
 float randFloat();
 glm::vec3 randXYZ();

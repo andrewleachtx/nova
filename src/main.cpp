@@ -13,11 +13,14 @@ using namespace std;
 
 // We can pass in a user pointer to callback functions - shouldn't require an updater; vars have inf lifespan
 GLFWwindow *g_window;
-FreeCam g_freecam;
+Camera g_camera;
 bool g_cursorVisible(false);
+bool g_isMainviewportHovered(false);
 bool g_keyToggles[256] = {false};
 float g_fps, g_lastRenderTime(0.0f);
 string g_resourceDir, g_dataFilepath;
+
+MainScene g_mainSceneFBO;
 
 Mesh g_meshSphere, g_meshSquare, g_meshCube, g_meshWeirdSquare;
 Program g_progScene;
@@ -25,62 +28,91 @@ Program g_progScene;
 glm::vec3 g_lightPos, g_lightCol;
 BPMaterial g_lightMat;
 
-// Store (x, y, timestamp) particles for world space, with padding optimization
-vector<vector<glm::vec3> > g_evtParticles;
-vector<size_t> g_evtParticleSizes;
-long long g_initTimestamp, g_lastTimestamp;
+// Maybe use unique_ptr
+shared_ptr<EventData> g_eventData;
+
 int g_focusedEvent = -1;
 float g_particleScale(1.0f);
 
-/*
-    We need to load the particle data from the .aedat4 in data/
+// https://github.com/ocornut/imgui/wiki/Docking
+// Creates required dockspace before rendering ImGui windows on top
+// TODO: Can we add power save ? https://github.com/ocornut/imgui/wiki/Implementing-Power-Save,-aka-Idling-outside-of-ImGui
+static void drawGUIDockspace() {
+    static bool is_fullscreen = true;
+    static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
+    ImGuiWindowFlags w_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
 
-    TODO: I don't like .back()
-*/
-static void loadEventParticles(const std::string &data_filepath) {
-    dv::io::MonoCameraRecording reader(data_filepath);
+    if (is_fullscreen) {
+        ImGuiViewport *viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->Pos);
+        ImGui::SetNextWindowSize(viewport->Size);
+        ImGui::SetNextWindowViewport(viewport->ID);
+        // ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 
-    // TODO: Could dynamically change this within
-    size_t mod_freq = 100;
-    size_t biggest_sz = 0;
-
-    // https://dv-processing.inivation.com/rel_1_7/reading_data.html#read-events-from-a-file
-    while (reader.isRunning()) {
-        if (const auto events = reader.getNextEventBatch(); events.has_value()) {
-            // New event; push back
-            g_lastTimestamp = 0;
-            g_evtParticles.push_back(vector<glm::vec3>());
-            for (size_t i = 0; i < events.value().size(); i++) {
-                const auto &event = events.value()[i];
-
-                if (g_evtParticles[0].empty()) {
-                    g_initTimestamp = event.timestamp();
-                }
-
-                g_lastTimestamp = std::max(g_lastTimestamp, event.timestamp());
-
-                if (i % mod_freq == 0) {
-                    // Should be relative
-                    float relative_timestamp = static_cast<float>(event.timestamp() - g_initTimestamp);
-                    g_evtParticles.back().push_back(glm::vec3((float)event.x(), (float)event.y(), relative_timestamp));
-                }
-            }
-
-            biggest_sz = std::max(biggest_sz, g_evtParticles.back().size());
-            g_evtParticleSizes.push_back(g_evtParticles.back().size());
-        }
+        w_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
     }
 
-    printf("There are %zu events\n", g_evtParticles.size());
-    printf("biggest_sz = %zu\n", biggest_sz);
-
-    // Should rescale with padding, can do normalization x - min / max - min
-    for (size_t i = 0; i < g_evtParticles.size(); i++) {
-        g_evtParticles[i].resize(biggest_sz, glm::vec3(0.0f));
-        for (size_t j = 0; j < g_evtParticleSizes[i]; j++) {
-            g_evtParticles[i][j].z = g_evtParticles[i][j].z / static_cast<float>(g_lastTimestamp - g_initTimestamp);
-        }
+    ImGui::Begin("DockSpace", nullptr, w_flags);
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
+        ImGuiID dockspace_id = ImGui::GetID("DockSpace");
+        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
     }
+    ImGui::End();
+}
+
+// TODO: Move this and drawGUIDockspace into utils.h/.cpp
+static void drawGUI2(const Camera& camera, float fps, float &particle_scale, int &focused_evt) {
+    drawGUIDockspace();
+
+    ImGui::Begin("Main Viewport");
+        const glm::vec3 &cam_pos = camera.pos;
+        
+        // Have to do a bounding check to make sure the mouse is really within the actual main viewport img for cursor callbacks
+        ImVec2 image_sz = ImGui::GetContentRegionAvail();
+        ImVec2 fbo_imageSz = ImVec2(g_mainSceneFBO.getFBOwidth(), g_mainSceneFBO.getFBOheight());
+        float img_aspect = image_sz.x / image_sz.y;
+        float fbo_aspect = fbo_imageSz.x / fbo_imageSz.y;
+
+        ImVec2 final_sz;
+        if (fbo_aspect > img_aspect) {
+            // Effectively the height is the limiting factor here, so we should max height and adjust width
+            final_sz = ImVec2(image_sz.x * fbo_aspect, image_sz.x);
+        }
+        else {
+            // Width limiting factor, adjust height
+            final_sz = ImVec2(image_sz.x, image_sz.x / fbo_aspect);
+        }
+
+        ImGui::Image((ImTextureID)g_mainSceneFBO.getColorTexture(), final_sz, ImVec2(0, 1), ImVec2(1, 0));
+        g_isMainviewportHovered = ImGui::IsItemHovered();
+    ImGui::End();
+
+    ImGui::Begin("Load");
+        ImGui::Text("File:");
+
+        if (ImGui::Button("Open File")) {
+            // TODO: This should interact with the EventData object somehow, simply recalling init may not be clean
+        }
+
+        // TODO: Cache recent files and state?
+    ImGui::End();
+
+    ImGui::Begin("Info");
+        ImGui::Text("Camera (World): (%.3f, %.3f, %.3f)", cam_pos.x, cam_pos.y, cam_pos.z);
+        ImGui::Separator();
+        ImGui::SliderFloat("Particle Scale", &particle_scale, 0.1f, 2.5f);
+        ImGui::Separator();
+        ImGui::Text("FPS: %.1f", fps);
+        // ImGui::PlotLines("FPS History", fps_historyBuf.data(), fps_historyBuf.size(), fps_bufIdx, nullptr, 0.0f, maxFPS + 10.0f, ImVec2(0, 80));
+    ImGui::End();
+
+    // TODO: Something like this, should add params
+    ImGui::Begin("Time Slice Controls");
+        ImGui::Text("Adjust left / right pointers:");
+        // ImGui::SliderFLoat("left", &left, lower bound, upper bound)
+        // ImGui::SliderFLoat("left", &left, lower bound, upper bound)
+    ImGui::End();
 }
 
 static void init() {
@@ -93,16 +125,25 @@ static void init() {
     // ImGui //
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
-        ImGuiIO& imgui_io = ImGui::GetIO(); (void)imgui_io;
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-        imgui_io.Fonts->AddFontFromFileTTF(string(g_resourceDir + "/CascadiaCode.ttf").c_str(), 20.0f);
+        io.Fonts->AddFontFromFileTTF(string(g_resourceDir + "/CascadiaCode.ttf").c_str(), 20.0f);
+
+        ImGuiStyle& style = ImGui::GetStyle();
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+            style.WindowRounding = 0.0f;
+            style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+        }
+
         ImGui::StyleColorsDark();
         ImGui_ImplGlfw_InitForOpenGL(g_window, true);
         ImGui_ImplOpenGL3_Init("#version 430");
 
-    // FreeCam //
-        g_freecam = FreeCam();
-        g_freecam.setInitPos(0.0f, 0.0f, 0.0f);
+    // Camera //
+        g_camera = Camera();
+        g_camera.setInitPos(0.0f, 0.0f, 0.0f);
 
     // Shader Programs //
         g_progScene = genPhongProg(g_resourceDir);
@@ -116,46 +157,16 @@ static void init() {
         g_lightCol = glm::vec3((187 / 255.0f), (178 / 255.0f), (233 / 255.0f));
         g_lightMat = BPMaterial(g_lightCol, g_lightCol, g_lightCol, 100.0f);
 
-    // Load .aedat events into global buffer //
-        loadEventParticles(g_dataFilepath);
+        int width, height;
+        glfwGetFramebufferSize(g_window, &width, &height);
+        g_mainSceneFBO.initialize(width, height);
+
+    // Load .aedat events into EventData object //
+        g_eventData = make_shared<EventData>();
+        g_eventData->initParticlesFromFile(g_dataFilepath);
 
     GLSL::checkError();
-    printf("[DEBUG] Made it through init()");
-}
-
-// Simply interpolate green->red based on g_initTimestamp and g_lastTimestamp.
-static inline glm::vec3 getTimeColor(float timestamp) {
-    // t = x - min / max - min (that said, all the evt timestamps are normalized - initTimestamp)
-    return glm::vec3(timestamp, 0.0f, 1.0f - timestamp);
-}
-
-
-static void drawParticles(MatrixStack &MV, MatrixStack &P) {
-    Program &prog = g_progScene;
-
-    // TODO: Use instanced rendering for speedup, we know buffer sz
-    prog.bind();
-    MV.pushMatrix();
-        for (size_t i = 0; i < g_evtParticles.size(); i++) {
-            for (size_t j = 0; j < g_evtParticleSizes[i]; j++) {
-                MV.pushMatrix();
-                    MV.translate(g_evtParticles[i][j]);
-                    MV.scale(g_particleScale);
-
-                    glm::vec3 lerp_color = getTimeColor(g_evtParticles[i][j].z);
-
-                    // FIXME: Unsafe comparison, but should underflow and still be far larger.
-                    if (g_focusedEvent != -1 && g_focusedEvent != i) {
-                        lerp_color *= 0.15f;   
-                    }
-
-                    sendToPhongShader(prog, P, MV, g_lightPos, lerp_color, g_lightMat);
-                    g_meshSphere.draw(prog);
-                MV.popMatrix();
-            }
-        }
-    MV.popMatrix();
-    prog.unbind();
+    cout << "[DEBUG] Made it out of init()" << endl;
 }
 
 static void drawSun(MatrixStack &MV, MatrixStack &P) {
@@ -177,23 +188,15 @@ static void drawSun(MatrixStack &MV, MatrixStack &P) {
 static void render() {
     float t = static_cast<float>(glfwGetTime());
 
-    // ImGui Frame //
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-
     // Get frame buffer size //
         int width, height;
         glfwGetFramebufferSize(g_window, &width, &height);
-        g_freecam.aspect = (float)width / (float)height;
+        g_camera.aspect = (float)width / (float)height;
 
     // Update FPS counter //
         float dt = t - g_lastRenderTime;
         g_fps = 1.0f / dt;
         g_lastRenderTime = t;
-
-    // Update camera //
-        g_freecam.update(dt);
 
     // Enable wireframe
     if (g_keyToggles[(unsigned)'t']) {
@@ -203,6 +206,7 @@ static void render() {
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
+    g_mainSceneFBO.bind();
     glViewport(0, 0, width, height);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
@@ -211,20 +215,35 @@ static void render() {
     MatrixStack P, MV;
     P.pushMatrix();
     MV.pushMatrix();
-    g_freecam.applyProjectionMatrix(P);
-    g_freecam.applyViewMatrix(MV);
-
-    // TODO: Draw something basic
-    drawSun(MV, P);
-    drawParticles(MV, P);
+    g_camera.applyProjectionMatrix(P);
+    g_camera.applyViewMatrix(MV);
+    
+    // Draw //
+        drawSun(MV, P);
+        g_eventData->draw(MV, P, g_progScene, g_particleScale, g_focusedEvent, g_lightPos, g_lightCol, g_lightMat, g_meshSphere);
 
     P.popMatrix();
     MV.popMatrix();
+    g_mainSceneFBO.unbind();
 
-    drawGUI(g_freecam, g_fps, g_particleScale, g_focusedEvent, g_evtParticles.size());
+    // Build ImGui Docking & Main Viewport //
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        
+        drawGUI2(g_camera, g_fps, g_particleScale, g_focusedEvent);
+    
+    // Render ImGui //
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-    ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        ImGuiIO& io = ImGui::GetIO();
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+            GLFWwindow* context_backup = glfwGetCurrentContext();
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+            glfwMakeContextCurrent(context_backup);
+        }
 
     GLSL::checkError(GET_FILE_LINE);
 }
@@ -248,7 +267,7 @@ int main(int argc, char** argv) {
     // GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     // const GLFWvidmode* mode = glfwGetVideoMode(monitor);
     // g_window = glfwCreateWindow(mode->width, mode->height, "NOVA", monitor, nullptr);
-    g_window = glfwCreateWindow(1280, 720, "NOVA", nullptr, nullptr);
+    g_window = glfwCreateWindow(1920, 1080, "NOVA", nullptr, nullptr);
     if (!g_window) {
         cerr << "Failed to create window" << endl;
         glfwTerminate();
@@ -256,7 +275,7 @@ int main(int argc, char** argv) {
     }
 
     // Placement above init() assumes parameters are initialized, and that wc has inf lifetime 
-    WindowContext wc = { &g_freecam, &g_cursorVisible, g_keyToggles };
+    WindowContext wc = { &g_camera, &g_cursorVisible, g_keyToggles, &g_isMainviewportHovered, &g_mainSceneFBO };
     glfwSetWindowUserPointer(g_window, &wc);
     glfwMakeContextCurrent(g_window);
 
@@ -287,9 +306,13 @@ int main(int argc, char** argv) {
         glfwPollEvents();
     }
 
-    // GLFW Cleanup //
+    // Cleanup //
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+    
     glfwDestroyWindow(g_window);
-    glfwTerminate();    
+    glfwTerminate();
 
     return 0;
 }
