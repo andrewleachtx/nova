@@ -32,7 +32,7 @@ BPMaterial g_lightMat;
 shared_ptr<EventData> g_eventData;
 
 int g_focusedEvent = -1;
-float g_particleScale(1.0f);
+float g_particleScale(0.35f);
 
 // https://github.com/ocornut/imgui/wiki/Docking
 // Creates required dockspace before rendering ImGui windows on top
@@ -127,10 +127,12 @@ static void init() {
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
         io.Fonts->AddFontFromFileTTF(string(g_resourceDir + "/CascadiaCode.ttf").c_str(), 20.0f);
-
+    
+        // bbb2e9 hex R:187, G:178, B:233
+        ImVec4 color_purple = ImVec4(0.733f, 0.698f, 0.914f, 1.0f);
         ImGuiStyle& style = ImGui::GetStyle();
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
             style.WindowRounding = 0.0f;
@@ -150,8 +152,10 @@ static void init() {
 
     // Load Shape(s) & Scene //
         g_meshSphere.loadMesh(g_resourceDir + "sphere.obj");
+        g_meshCube.loadMesh(g_resourceDir + "cube.obj");
 
         g_meshSphere.init();
+        g_meshCube.init();
 
         g_lightPos = glm::vec3(0.0f, 1000.0f, 0.0f);
         g_lightCol = glm::vec3((187 / 255.0f), (178 / 255.0f), (233 / 255.0f));
@@ -219,8 +223,12 @@ static void render() {
     g_camera.applyViewMatrix(MV);
     
     // Draw //
-        drawSun(MV, P);
-        g_eventData->draw(MV, P, g_progScene, g_particleScale, g_focusedEvent, g_lightPos, g_lightCol, g_lightMat, g_meshSphere);
+        // drawSun(MV, P);
+        g_eventData->draw(MV, P, g_progScene,
+                          g_particleScale, g_focusedEvent,
+                          g_lightPos, g_lightCol,
+                          g_lightMat, g_meshSphere,
+                          g_meshCube);
 
     P.popMatrix();
     MV.popMatrix();
@@ -265,9 +273,10 @@ int main(int argc, char** argv) {
     }
 
     // GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-    // const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+    // const GLFWvidmode* mode = glfwG\etVideoMode(monitor);
     // g_window = glfwCreateWindow(mode->width, mode->height, "NOVA", monitor, nullptr);
-    g_window = glfwCreateWindow(1920, 1080, "NOVA", nullptr, nullptr);
+    // g_window = glfwCreateWindow(1920, 1080, "NOVA", nullptr, nullptr);
+    g_window = glfwCreateWindow(1240, 600, "NOVA", nullptr, nullptr);
     if (!g_window) {
         cerr << "Failed to create window" << endl;
         glfwTerminate();

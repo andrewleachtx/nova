@@ -26,13 +26,15 @@ class EventData {
 
         void initParticlesFromFile(const std::string &filename, size_t mod_freq=100);
 
+        void drawBoundingBox(MatrixStack &MV, MatrixStack &P, Program &prog, float particleScale, const Mesh &meshCube);
         void draw(MatrixStack &MV, MatrixStack &P, Program &prog,
-            float particleScale, int focusedEvent,
+            float particleScale, int focused_evt,
             const glm::vec3 &lightPos, const glm::vec3 &lightColor,
-            const BPMaterial &lightMat, const Mesh &g_meshSphere) const;
+            const BPMaterial &lightMat, const Mesh &meshSphere, 
+            const Mesh &meshCube);
 
     private:
-        std::vector< std::vector<glm::vec3> > particles;
+        std::vector< std::vector<glm::vec3> > particleBatches;
         // Because we pad, we need to store the range of usable particles
         std::vector<size_t> particleSizes;
 
@@ -41,6 +43,10 @@ class EventData {
 
         float timeWindow_L;
         float timeWindow_R;
+            
+        // We can define a bounding box and thus center to rotate around
+        glm::vec3 min_XYZ;
+        glm::vec3 max_XYZ;
 };
 
 #endif // EVENT_DATA_H
