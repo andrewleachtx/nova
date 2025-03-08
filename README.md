@@ -2,14 +2,44 @@
 Neuromorphic Optics Visualization Application
 
 # Table of Contents
-1. [Dev Setup](#dev-setup)
-2. [Running](#running)
-3. [TODO](#todo)
+- [NOVA](#nova)
+- [Table of Contents](#table-of-contents)
+- [Dev Setup](#dev-setup)
+  - [Making your dev branch](#making-your-dev-branch)
+  - [Dependencies](#dependencies)
+    - [VCPKG](#vcpkg)
+    - [Visual Studio for MSVC](#visual-studio-for-msvc)
+    - [CMake](#cmake)
+    - [Package Installation (\*this one takes ~1hr)](#package-installation-this-one-takes-1hr)
+    - [Initialize Submodules](#initialize-submodules)
+    - [Building](#building)
+- [Running](#running)
+  - [Using Visual Studio GUI](#using-visual-studio-gui)
+  - [run.ps1](#runps1)
+- [TODO](#todo)
 
 # Dev Setup
+## Making your dev branch
+Don't work off main - make a branch off dev `dev-<yourname>` with
+```
+git fetch origin
+git checkout dev
+git pull origin dev
+```
+Then use your name with `git checkout -b dev-<yourname>`. Then `git push -u origin dev-<yourname>` (the same branch you just made). You can view the branches with `git branch -v -a` - don't mess with the ones that have `remotes/` prepended to them.
+
+You can pull commits from `git pull origin <whatever>` from whatever branch, but for pushing, pull requests follow this order
+```
+main
+    dev
+        dev-andrew
+        dev-gage
+        ...
+```
+
 ## Dependencies
 As a preface, you should
-1. Clone somewhere in your `C:` drive (so not in `WSL`). Then if you use VSCode you can open a split terminal with powershell.exe on the left and WSL2 on the right.
+1. Clone somewhere in your `C:` drive (so not in your `WSL` directory). Then if you use VSCode you can open a split terminal with powershell.exe on the left and WSL2 on the right.
 2. Try to run your `git` commands in a `WSL` terminal, not `PowerShell`, to prevent line carriage return [issues](https://docs.github.com/en/get-started/git-basics/configuring-git-to-handle-line-endings#re-normalizing-a-repository). `.gitattributes` exists, so this should be mitigated.
 3. Expect installs (i.e. `vcpkg`) to require a restart of the terminal / `VSCode` instance.
 
@@ -27,19 +57,19 @@ git checkout -b fmt-10.2.1 b8ec6abf5d
 
 `fmt` is problematic. If you `cd $env:VCPKG_ROOT` and `git log --oneline --grep="\[fmt\]"` you will see we need to step back to the proper vcpkg hash, to enforce lower usage. Otherwise, we get a conflict when using `dv-processing` which erroneously states any version of fmt `>=8.1.1` works. Hence the checkout to an older version of `vcpkg` that supports it.
 
-### VS 2017/2022
+### Visual Studio for MSVC
 For MSVC, download [Visual Studio 2022](https://visualstudio.microsoft.com/downloads/).
 
 Technically, you don't need the IDE, just the MSVC compiler. You should check mark these items when you have downloaded and opened the installer:
 - Desktop development with C++
-- For safety get MSVC 142 as well
+- For safety wouldn't hurt to click MSVC 142 as well
 
 ### CMake
 You will need [cmake](https://cmake.org/download/) as well if you do not have it.
 
-Note that anything that updates your path variable will not 
+Note that anything that updates your path variable will not immediately work in an already open terminal. You should reload any terminals or VSCode.
 
-### Package Installation
+### Package Installation (*this one takes ~1hr)
 The `--triplet=x64-windows` will install these libraries to be used in your system. If you want them local to the project (not recommended) you should remove that. 
 
 1. Run `vcpkg install --triplet=x64-windows dv-processing glew glfw3 glm eigen3` in the project root (this can take up to an hour, run this and come back in a while).
@@ -53,7 +83,7 @@ The `--triplet=x64-windows` will install these libraries to be used in your syst
 
 # Running
 ## Using Visual Studio GUI
-Run `explorer.exe .` and open `build/`. You should see a `.sln` extension, like `nova.sln`. Double click that. You can look more at the VS section to understand ho to actually use it. I only use VS to debug sometimes as I personally just use CLI + VSCode to develop at this point.
+If you want to use VS for debugging, you can run `explorer.exe .` in your terminal and open `build/`. You should see a `.sln` extension, like `nova.sln`. Double click that. I only use VS to debug sometimes as I personally just use CLI + VSCode to develop at this point.
 
 ## run.ps1
 `.ps1` files are PowerShell scripts. Open PowerShell in the terminal (type `powershell.exe` if it isn't the native Windows VSCode terminal).
@@ -61,22 +91,4 @@ Run `explorer.exe .` and open `build/`. You should see a `.sln` extension, like 
 Run `run.ps1`. You can look at it to see what it does.
 
 # TODO
-1. Maybe make a `vcpkg.json` manifest
-
-# Making a dev branch
-Don't work off main; make a branch `dev-<yourname>` with
-```
-git fetch origin
-git checkout dev
-git pull origin dev
-```
-Then use your name with `git checkout -b dev-<NAME>`. Then `git push -u origin dev-<NAME>` (the same branch you just made). You can view the branches with `git branch -v -a` - don't mess with the ones that have `remotes/` prepended to them.
-
-You can base off of commits from whatever branch, but we should set up pull request to go in this order
-```
-main
-    dev
-        dev-andrew
-        dev-gage
-        ...
-```
+1. Make a `vcpkg.json` manifest? It is already a pretty simple vcpkg install though.
