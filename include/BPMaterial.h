@@ -10,7 +10,7 @@ class BPMaterial {
         vec3 ka, kd, ks;
         float s;
 
-        BPMaterial() : ka(0.0f), kd(0.0f), ks(0.0f), s(0.0f) {}
+        BPMaterial() : ka(1.0f), kd(1.0f), ks(1.0f), s(1.0f) {}
         BPMaterial(const vec3& ka, const vec3& kd, const vec3& ks, float s) : ka(ka), kd(kd), ks(ks), s(s) {}
 };
 

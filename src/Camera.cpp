@@ -6,10 +6,6 @@
 #include "Camera.h"
 #include "MatrixStack.h"
 
-#define GLEW_STATIC
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -96,17 +92,11 @@ void Camera::mouseMoved(float x, float y)
 }
 
 glm::mat4 Camera::calcLookAt() const {
-	// glm::vec3 eye = pos;
-    // glm::vec3 forward = calcForward();
-	// glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+	glm::vec3 eye = pos;
+    glm::vec3 forward = calcForward();
+	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 
-	// return glm::lookAt(eye, eye + forward, up);
-    glm::mat4 R = glm::rotate(glm::mat4(1.0f), rotations.x, glm::vec3(0.0f, 1.0f, 0.0f));
-    R = glm::rotate(R, rotations.y, glm::vec3(1.0f, 0.0f, 0.0f));
-
-    glm::mat4 T = glm::translate(glm::mat4(1.0f), translations);
-
-    return R * T;
+	return glm::lookAt(eye, eye + forward, up);
 }
 
 void Camera::applyProjectionMatrix(MatrixStack& P) const {
@@ -114,7 +104,9 @@ void Camera::applyProjectionMatrix(MatrixStack& P) const {
 }
 
 void Camera::applyViewMatrix(MatrixStack& MV) const {
-    MV.multMatrix(calcLookAt());
+	MV.translate(translations);
+	MV.rotate(rotations.y, glm::vec3(1.0f, 0.0f, 0.0f));
+	MV.rotate(rotations.x, glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
 void Camera::applyCameraMatrix(MatrixStack& MV) const {
