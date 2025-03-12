@@ -17,7 +17,6 @@
 #include <GLFW/glfw3.h>
 
 class MatrixStack;
-using glm::vec2, glm::vec3, glm::mat4;
 
 // TODO: Bring old FreeCam logic back with toggle to switch?
 class Camera {
@@ -30,7 +29,8 @@ class Camera {
     public:
         Camera();
         ~Camera();
-
+        
+        void setEvtCenter(const glm::vec3 &center);
         void setInitPos(float x, float y, float z);
         void setForward(const glm::vec3 &dir);
         glm::vec3 calcForward() const;
@@ -61,6 +61,9 @@ class Camera {
         glm::vec3 translations;
         glm::vec2 mousePrev;
         
+        // Center of bounding box
+        glm::vec3 evt_center;
+
         int state;
 };
 

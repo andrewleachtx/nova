@@ -6,7 +6,8 @@
 #include <dv-processing/core/utils.hpp>
 
 EventData::EventData() : initTimestamp(0), lastTimestamp(0), timeWindow_L(-1.0f), timeWindow_R(-1.0f),
-    min_XYZ(std::numeric_limits<float>::max()), max_XYZ(std::numeric_limits<float>::lowest()) {}
+    min_XYZ(std::numeric_limits<float>::max()), max_XYZ(std::numeric_limits<float>::lowest()),
+    center(glm::vec3(0.0f)) {}
 EventData::~EventData() {}
 
 void EventData::initParticlesFromFile(const std::string &filename, size_t mod_freq) {
@@ -55,7 +56,6 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t mod_fr
         The center is of course the midpoint. We should store the longest component from the center
         to the planes formed by the box.center
     */
-    glm::vec3 center = 0.5f * (raw_minXYZ + raw_maxXYZ);
     float diff_scale = 500.0f / static_cast<float>(lastTimestamp - initTimestamp);
 
     // Each particle is grouped by event s.t. particle[i] stores a vector of glm::vec3 with a normalized abs. timestamp
@@ -71,55 +71,88 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t mod_fr
     max_XYZ = raw_maxXYZ;
     min_XYZ.z *= diff_scale;
     max_XYZ.z *= diff_scale;
+    center = 0.5f * (min_XYZ + max_XYZ);
 
     printf("Loaded %zu event batches\n", particleBatches.size());
     printf("Biggest batch size: %zu\n", max_batchSz);
-    printvec3(min_XYZ);
-    printvec3(max_XYZ);
 }
 
-// // FIXME: Lazy usage of immediate mode, should add VAO
-// void EventData::drawBoundingBox(Program &prog) {
-//     glm::vec3 corners[8] = {
-//         { min_XYZ.x, min_XYZ.y, min_XYZ.z },
-//         { max_XYZ.x, min_XYZ.y, min_XYZ.z },
-//         { max_XYZ.x, max_XYZ.y, min_XYZ.z },
-//         { min_XYZ.x, max_XYZ.y, min_XYZ.z },
-//         { min_XYZ.x, min_XYZ.y, max_XYZ.z },
-//         { max_XYZ.x, min_XYZ.y, max_XYZ.z },
-//         { max_XYZ.x, max_XYZ.y, max_XYZ.z },
-//         { min_XYZ.x, max_XYZ.y, max_XYZ.z }
-//     };
+// TODO: Move precalculable things to an init
+void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &prog, float particleScale) {
+    const glm::vec3 &scaled_minXYZ = min_XYZ; 
+    const glm::vec3 &scaled_maxXYZ = max_XYZ;
+    
+    glLineWidth(2.0f);
+    
+    glm::vec3 corners[8] = {
+        { scaled_minXYZ.x, scaled_minXYZ.y, scaled_minXYZ.z },
+        { scaled_maxXYZ.x, scaled_minXYZ.y, scaled_minXYZ.z },
+        { scaled_maxXYZ.x, scaled_maxXYZ.y, scaled_minXYZ.z },
+        { scaled_minXYZ.x, scaled_maxXYZ.y, scaled_minXYZ.z },
+        { scaled_minXYZ.x, scaled_minXYZ.y, scaled_maxXYZ.z },
+        { scaled_maxXYZ.x, scaled_minXYZ.y, scaled_maxXYZ.z },
+        { scaled_maxXYZ.x, scaled_maxXYZ.y, scaled_maxXYZ.z },
+        { scaled_minXYZ.x, scaled_maxXYZ.y, scaled_maxXYZ.z }
+    };
 
-//     static int edges[12][2] = {
-//         {0,1}, {1,2}, {2,3}, {3,0},
-//         {4,5}, {5,6}, {6,7}, {7,4},
-//         {0,4}, {1,5}, {2,6}, {3,7}
-//     };
-// }
+    int edges[12][2] = {
+        {0,1}, {1,2}, {2,3}, {3,0},
+        {4,5}, {5,6}, {6,7}, {7,4},
+        {0,4}, {1,5}, {2,6}, {3,7}
+    };
 
-void EventData::drawBoundingBox(MatrixStack &MV, MatrixStack &P, Program &prog, float particleScale, const Mesh &meshCube) {
-    // Compute scaled corners of the bounding box, accounting for particleScale
-    glm::vec3 scaled_minXYZ = min_XYZ * particleScale;
-    glm::vec3 scaled_maxXYZ = max_XYZ * particleScale;
-
-    // Compute the center and scale of the bounding box
-    glm::vec3 box_center = 0.5f * (scaled_minXYZ + scaled_maxXYZ);
-    glm::vec3 box_scale  = scaled_maxXYZ - scaled_minXYZ;
-
-    // Render the bounding box cube
+    // Instead of immediate mode use VBOs
+    static GLuint lineVBO, lineVAO;
+    static bool initialized = false;
+    
+    if (!initialized) {
+        glGenBuffers(1, &lineVBO);
+        glGenVertexArrays(1, &lineVAO);
+        initialized = true;
+    }
+    
+    // Buffer for x0, y0, z0, x1, y1, ... of each line segment
+    static std::vector<float> line_posbuf(12 * 2 * 3);
+    for (int i = 0; i < 12; i++) {
+        // Start
+        line_posbuf.push_back(corners[edges[i][0]].x);
+        line_posbuf.push_back(corners[edges[i][0]].y);
+        line_posbuf.push_back(corners[edges[i][0]].z);
+        
+        // End
+        line_posbuf.push_back(corners[edges[i][1]].x);
+        line_posbuf.push_back(corners[edges[i][1]].y);
+        line_posbuf.push_back(corners[edges[i][1]].z);
+    }
+    
+    // Bind VAO and update VBO
+    glBindVertexArray(lineVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+    glBufferData(GL_ARRAY_BUFFER, line_posbuf.size() * sizeof(float), line_posbuf.data(), GL_DYNAMIC_DRAW);
+    
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    
     prog.bind();
     MV.pushMatrix();
-        MV.translate(box_center);
-        MV.scale(box_scale);
-
-        // Set bounding box color (e.g., semi-transparent white)
-        glm::vec3 bbox_color(1.0f, 1.0f, 1.0f);
-        sendToPhongShader(prog, P, MV, glm::vec3(0.0f), bbox_color, BPMaterial());
-
-        meshCube.draw(prog);
+    
+    // TODO: Can change, for now white
+    glm::vec3 color_line(1.0f, 1.0f, 1.0f);
+    BPMaterial mat_line;
+    mat_line.ka = color_line;
+    mat_line.kd = color_line;
+    mat_line.ks = color_line;
+    mat_line.s = 10.0f;
+    
+    sendToPhongShader(prog, P, MV, glm::vec3(0.0f), color_line, mat_line);
+    glDrawArrays(GL_LINES, 0, line_posbuf.size() / 3);
+    
     MV.popMatrix();
     prog.unbind();
+    
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glLineWidth(1.0f);
 }
 
 void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
@@ -130,29 +163,21 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
 
     prog.bind();
     MV.pushMatrix();
-        // Translate to center
-        // glm::vec3 center = 0.5f * (min_XYZ + max_XYZ);
-        // MV.translate(center);
-
         for (size_t i = 0; i < particleBatches.size(); i++) {
             for (size_t j = 0; j < particleSizes[i]; j++) {
                 MV.pushMatrix();
                 MV.translate(particleBatches[i][j]);
                 MV.scale(particleScale);
 
-                // glm::vec3 color = getTimeColor(particleBatches[i][j].z);
                 glm::vec3 color = glm::vec3(1.0f, 0.0f, 0.0f);
 
-                // if (focused_evt != -1 && focused_evt != static_cast<int>(i)) {
-                //     color *= 0.15f;
-                // }
                 sendToPhongShader(prog, P, MV, lightPos, color, lightMat);
                 meshSphere.draw(prog);
                 MV.popMatrix();
             }
         }
         
-        // drawBoundingBox(MV, P, prog, particleScale, meshCube);
-        MV.popMatrix();
-        prog.unbind();
+        drawBoundingBoxWireframe(MV, P, prog, particleScale);
+    MV.popMatrix();
+    prog.unbind();
 }

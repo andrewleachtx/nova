@@ -37,6 +37,7 @@ float g_particleScale(0.35f);
 // https://github.com/ocornut/imgui/wiki/Docking
 // Creates required dockspace before rendering ImGui windows on top
 // TODO: Can we add power save ? https://github.com/ocornut/imgui/wiki/Implementing-Power-Save,-aka-Idling-outside-of-ImGui
+// TODO: Move to utils
 static void drawGUIDockspace() {
     static bool is_fullscreen = true;
     static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
@@ -47,7 +48,6 @@ static void drawGUIDockspace() {
         ImGui::SetNextWindowPos(viewport->Pos);
         ImGui::SetNextWindowSize(viewport->Size);
         ImGui::SetNextWindowViewport(viewport->ID);
-        // ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 
         w_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
     }
@@ -61,7 +61,7 @@ static void drawGUIDockspace() {
     ImGui::End();
 }
 
-// TODO: Move this and drawGUIDockspace into utils.h/.cpp
+// TODO: Move to utils
 static void drawGUI2(const Camera& camera, float fps, float &particle_scale, int &focused_evt) {
     drawGUIDockspace();
 
@@ -115,6 +115,39 @@ static void drawGUI2(const Camera& camera, float fps, float &particle_scale, int
     ImGui::End();
 }
 
+// TODO: Move to utils
+static void initImGuiStyle(ImGuiStyle &style) {
+    ImVec4 color_purple = ImVec4(0.733f, 0.698f, 0.914f, 1.0f);
+    ImVec4 color_purple_darker = ImVec4(0.5f, 0.45f, 0.7f, 1.0f);
+    ImVec4 color_background = ImVec4(0.12f, 0.12f, 0.18f, 1.0f);
+    ImVec4 color_text = ImVec4(0.9f, 0.9f, 0.9f, 1.0f);
+            
+    style.Colors[ImGuiCol_WindowBg] = color_background;
+    style.Colors[ImGuiCol_Text] = color_text;
+    style.Colors[ImGuiCol_TitleBg] = color_purple_darker;
+    style.Colors[ImGuiCol_TitleBgActive] = color_purple;
+    style.Colors[ImGuiCol_Header] = color_purple_darker;
+    style.Colors[ImGuiCol_HeaderHovered] = color_purple;
+    style.Colors[ImGuiCol_Button] = color_purple_darker;
+    style.Colors[ImGuiCol_ButtonHovered] = color_purple;
+    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.2f, 0.2f, 0.25f, 1.0f);
+    style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.3f, 0.3f, 0.4f, 1.0f);
+    style.Colors[ImGuiCol_Tab] = color_purple_darker;
+    style.Colors[ImGuiCol_TabHovered] = ImVec4(0.8f, 0.8f, 0.95f, 1.0f);
+    style.Colors[ImGuiCol_TabActive] = color_purple;
+
+    style.Colors[ImGuiCol_Tab] = ImVec4(0.25f, 0.25f, 0.35f, 1.0f);
+    style.Colors[ImGuiCol_TabHovered] = ImVec4(0.4f, 0.4f, 0.5f, 1.0f);
+    style.Colors[ImGuiCol_TabActive] = ImVec4(0.733f, 0.698f, 0.914f, 1.0f);
+    style.Colors[ImGuiCol_TabUnfocused] = ImVec4(0.2f, 0.2f, 0.3f, 1.0f);
+    style.Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.5f, 0.5f, 0.7f, 1.0f);
+    style.WindowRounding = 6.0f;
+    style.FrameRounding = 4.0f;
+    style.TabRounding = 4.0f;
+    style.ScrollbarRounding = 4.0f;
+    style.GrabRounding = 4.0f;
+}
+
 static void init() {
     srand(0);
 
@@ -132,8 +165,7 @@ static void init() {
         io.Fonts->AddFontFromFileTTF(string(g_resourceDir + "/CascadiaCode.ttf").c_str(), 20.0f);
     
         // bbb2e9 hex R:187, G:178, B:233
-        ImVec4 color_purple = ImVec4(0.733f, 0.698f, 0.914f, 1.0f);
-        ImGuiStyle& style = ImGui::GetStyle();
+        ImGuiStyle &style = ImGui::GetStyle();
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
             style.WindowRounding = 0.0f;
             style.Colors[ImGuiCol_WindowBg].w = 1.0f;
@@ -143,9 +175,16 @@ static void init() {
         ImGui_ImplGlfw_InitForOpenGL(g_window, true);
         ImGui_ImplOpenGL3_Init("#version 430");
 
+        initImGuiStyle(style);
+
+    // Load .aedat events into EventData object //
+        g_eventData = make_shared<EventData>();
+        g_eventData->initParticlesFromFile(g_dataFilepath);
+
     // Camera //
         g_camera = Camera();
-        g_camera.setInitPos(0.0f, 0.0f, 0.0f);
+        g_camera.setInitPos(0.0f, 0.0f, -1000.0f);
+        g_camera.setEvtCenter(g_eventData->getCenter());
 
     // Shader Programs //
         g_progScene = genPhongProg(g_resourceDir);
@@ -165,27 +204,6 @@ static void init() {
         glfwGetFramebufferSize(g_window, &width, &height);
         g_mainSceneFBO.initialize(width, height);
 
-    // Load .aedat events into EventData object //
-        g_eventData = make_shared<EventData>();
-        g_eventData->initParticlesFromFile(g_dataFilepath);
-
-    GLSL::checkError();
-    cout << "[DEBUG] Made it out of init()" << endl;
-}
-
-static void drawSun(MatrixStack &MV, MatrixStack &P) {
-    Program &prog = g_progScene;
-
-    prog.bind();
-    MV.pushMatrix();
-        MV.translate(g_lightPos);
-        MV.scale(10.0f);
-        
-        sendToPhongShader(prog, P, MV, g_lightPos, g_lightCol, g_lightMat);
-        g_meshSphere.draw(prog);
-    MV.popMatrix();
-    prog.unbind();
-    
     GLSL::checkError();
 }
 
@@ -223,7 +241,6 @@ static void render() {
     g_camera.applyViewMatrix(MV);
     
     // Draw //
-        // drawSun(MV, P);
         g_eventData->draw(MV, P, g_progScene,
                           g_particleScale, g_focusedEvent,
                           g_lightPos, g_lightCol,
@@ -272,8 +289,10 @@ int main(int argc, char** argv) {
         return -1;
     }
 
+
+    // TODO: Can keep for a "fullscreen" mode setting later perhaps
     // GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-    // const GLFWvidmode* mode = glfwG\etVideoMode(monitor);
+    // const GLFWvidmode* mode = glfwGetVideoMode(monitor);
     // g_window = glfwCreateWindow(mode->width, mode->height, "NOVA", monitor, nullptr);
     // g_window = glfwCreateWindow(1920, 1080, "NOVA", nullptr, nullptr);
     g_window = glfwCreateWindow(1240, 600, "NOVA", nullptr, nullptr);
