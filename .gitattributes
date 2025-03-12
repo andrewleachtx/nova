@@ -1,6 +1,6 @@
 * text=auto
-*.sh text eol=lf
-*.cpp text eol=lf
-*.h text eol=lf
-*.py text eol=lf
+*.sh text eol=crlf
+*.cpp text eol=crlf
+*.h text eol=crlf
+*.py text eol=crlf
 *.md text eol=crlf

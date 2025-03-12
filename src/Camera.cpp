@@ -42,6 +42,7 @@ void Camera::setEvtCenter(const glm::vec3 &center) {
 
 void Camera::setInitPos(float x, float y, float z) {
 	pos = glm::vec3(x, y, z);
+    translations = -pos;
 }
 
 void Camera::setForward(const glm::vec3 &dir) {

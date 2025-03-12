@@ -48,6 +48,7 @@ class Camera {
         float yaw;
         float pitch;
         float aspect;
+        glm::vec3 translations;
     private:
         float t_factor;
         float r_factor;
@@ -58,7 +59,7 @@ class Camera {
         float zfar;
 
         glm::vec2 rotations;
-        glm::vec3 translations;
+        // glm::vec3 translations;
         glm::vec2 mousePrev;
         
         // Center of bounding box

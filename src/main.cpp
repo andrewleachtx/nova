@@ -69,7 +69,7 @@ static void init() {
 
     // Camera //
         g_camera = Camera();
-        g_camera.setInitPos(0.0f, 0.0f, -1000.0f);
+        g_camera.setInitPos(700.0f, 125.0f, 1500.0f);
         g_camera.setEvtCenter(g_eventData->getCenter());
 
     // Shader Programs //
@@ -142,7 +142,7 @@ static void render() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         
-        drawGUI(g_camera, g_fps, g_particleScale, g_focusedEvent, g_isMainviewportHovered, g_mainSceneFBO);
+        drawGUI(g_camera, g_fps, g_particleScale, g_isMainviewportHovered, g_mainSceneFBO, g_eventData);
     
     // Render ImGui //
         ImGui::Render();
@@ -175,7 +175,6 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-
     // TODO: Can keep for a "fullscreen" mode setting later perhaps
     // GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     // const GLFWvidmode* mode = glfwGetVideoMode(monitor);
@@ -207,6 +206,7 @@ int main(int argc, char** argv) {
     glfwSwapInterval(1);
     glfwSetKeyCallback(g_window, key_callback);
     glfwSetMouseButtonCallback(g_window, mouse_button_callback);
+    glfwSetScrollCallback(g_window, scroll_callback);
     glfwSetCursorPosCallback(g_window, cursor_position_callback);
     glfwSetCharCallback(g_window, char_callback);
     glfwSetFramebufferSizeCallback(g_window, resize_callback);

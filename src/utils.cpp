@@ -127,6 +127,18 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 	}
 }
 
+// Mouse scroll
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
+    WindowContext* wc = static_cast<WindowContext*>(glfwGetWindowUserPointer(window));
+
+    if (!*(wc->is_mainViewportHovered)) {
+        return;
+    }
+
+    // TODO: Add a function in the camera class to handle scrolling, also need to avoid ImGui scroll override
+    wc->camera->translations.z -= 100.0f * (float)yoffset;
+}
+
 // This function is called when the mouse moves
 void cursor_position_callback(GLFWwindow* window, double xmouse, double ymouse) {
     WindowContext* wc = static_cast<WindowContext*>(glfwGetWindowUserPointer(window));
@@ -298,8 +310,8 @@ void drawGUIDockspace() {
     ImGui::End();
 }
 
-void drawGUI(const Camera& camera, float fps, float &particle_scale, int &focused_evt, bool &is_mainViewportHovered,
-    MainScene &mainSceneFBO) {
+void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
+    MainScene &mainSceneFBO, shared_ptr<EventData> &evtData) {
 
     drawGUIDockspace();
 
@@ -351,16 +363,16 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, int &focuse
         ImGui::Text("Avg FPS: %.1f", avgFPS);
         ImGui::Text("Min FPS: %.1f", minFPS);
         ImGui::Text("Max FPS: %.1f", maxFPS);
+        ImGui::Separator();
 
         ImGui::PlotLines("##FPS History", fps_historyBuf.data(), fps_historyBuf.size(), fps_bufIdx, nullptr, 0.0f, maxFPS + 10.0f, ImVec2(0, 80));
-    ImGui::End();
+        ImGui::Separator();
 
-    // TODO: Something like this, should add params
-    // ImGui::Begin("Time Slice Controls");
-    //     ImGui::Text("Adjust left / right pointers:");
-        // ImGui::SliderFLoat("left", &left, lower bound, upper bound)
-        // ImGui::SliderFLoat("left", &left, lower bound, upper bound)
-    // ImGui::End();
+        ImGui::Text("Time Window (%.3f, %.3f)", evtData->getTimeWindow_L(), evtData->getTimeWindow_R());
+        
+        ImGui::SliderFloat("Left", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
+        ImGui::SliderFloat("Right", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), ceil(evtData->getMaxTimestamp()));
+        ImGui::End();
 }
 
 float randFloat() {

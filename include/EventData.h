@@ -34,6 +34,10 @@ class EventData {
             const Mesh &meshCube);
 
         const glm::vec3 &getCenter() const { return center; }
+        const float &getMaxTimestamp() const { return max_XYZ.z; }
+        const float &getMinTimestamp() const { return min_XYZ.z; }
+        float &getTimeWindow_L() { return timeWindow_L; }
+        float &getTimeWindow_R() { return timeWindow_R; }
 
     private:
         std::vector< std::vector<glm::vec3> > particleBatches;

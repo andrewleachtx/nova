@@ -169,7 +169,11 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
                 MV.translate(particleBatches[i][j]);
                 MV.scale(particleScale);
 
-                glm::vec3 color = glm::vec3(1.0f, 0.0f, 0.0f);
+                glm::vec3 color = glm::vec3(0.0f, 1.0f, 0.0f);
+                // apply tint if t not in [timeWindow_L, timeWindow_R]
+                if (particleBatches[i][j].z < timeWindow_L || particleBatches[i][j].z > timeWindow_R) {
+                    color = glm::vec3(0.5f, 0.5f, 0.5f);
+                }
 
                 sendToPhongShader(prog, P, MV, lightPos, color, lightMat);
                 meshSphere.draw(prog);
