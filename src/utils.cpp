@@ -240,27 +240,108 @@ float getMaxFPS() {
     return max;
 }
 
-ImGuiWindowFlags wflags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize; 
-void drawGUI(const Camera& camera, float fps, float &particle_scale, int &focused_evt) {
-    ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-    ImGui::Begin("Debug", nullptr, wflags);
-        const glm::vec3& cam_pos = camera.pos;
-        ImGui::Text("Camera (World): (");
-        ImGui::SameLine(0.0f, 0.0f);
-        ImGui::TextColored(IMCOLOR_RED, "%.3f, ", cam_pos.x);
-        ImGui::SameLine(0.0f, 0.0f);
-        ImGui::TextColored(IMCOLOR_GREEN, "%.3f, ", cam_pos.y);
-        ImGui::SameLine(0.0f, 0.0f);
-        ImGui::TextColored(IMCOLOR_BLUE, "%.3f", cam_pos.z);
-        ImGui::SameLine(0.0f, 0.0f);
-        ImGui::Text(")");
+void initImGuiStyle(ImGuiStyle &style) {
+    ImVec4 color_purple = ImVec4(0.733f, 0.698f, 0.914f, 1.0f);
+    ImVec4 color_purple_darker = ImVec4(0.5f, 0.45f, 0.7f, 1.0f);
+    ImVec4 color_background = ImVec4(0.12f, 0.12f, 0.18f, 1.0f);
+    ImVec4 color_text = ImVec4(0.9f, 0.9f, 0.9f, 1.0f);
+            
+    style.Colors[ImGuiCol_WindowBg] = color_background;
+    style.Colors[ImGuiCol_Text] = color_text;
+    style.Colors[ImGuiCol_TitleBg] = color_purple_darker;
+    style.Colors[ImGuiCol_TitleBgActive] = color_purple;
+    style.Colors[ImGuiCol_Header] = color_purple_darker;
+    style.Colors[ImGuiCol_HeaderHovered] = color_purple;
+    style.Colors[ImGuiCol_Button] = color_purple_darker;
+    style.Colors[ImGuiCol_ButtonHovered] = color_purple;
+    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.2f, 0.2f, 0.25f, 1.0f);
+    style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.3f, 0.3f, 0.4f, 1.0f);
+    style.Colors[ImGuiCol_Tab] = color_purple_darker;
+    style.Colors[ImGuiCol_TabHovered] = ImVec4(0.8f, 0.8f, 0.95f, 1.0f);
+    style.Colors[ImGuiCol_TabActive] = color_purple;
 
-        ImGui::SliderFloat("Particle Scale", &particle_scale, 0.1f, 2.5f);
+    style.Colors[ImGuiCol_Tab] = ImVec4(0.25f, 0.25f, 0.35f, 1.0f);
+    style.Colors[ImGuiCol_TabHovered] = ImVec4(0.4f, 0.4f, 0.5f, 1.0f);
+    style.Colors[ImGuiCol_TabActive] = ImVec4(0.733f, 0.698f, 0.914f, 1.0f);
+    style.Colors[ImGuiCol_TabUnfocused] = ImVec4(0.2f, 0.2f, 0.3f, 1.0f);
+    style.Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.5f, 0.5f, 0.7f, 1.0f);
+    style.WindowRounding = 6.0f;
+    style.FrameRounding = 4.0f;
+    style.TabRounding = 4.0f;
+    style.ScrollbarRounding = 4.0f;
+    style.GrabRounding = 4.0f;
+}
+
+// https://github.com/ocornut/imgui/wiki/Docking
+// Creates required dockspace before rendering ImGui windows on top
+// TODO: Can we add power save ? https://github.com/ocornut/imgui/wiki/Implementing-Power-Save,-aka-Idling-outside-of-ImGui
+void drawGUIDockspace() {
+    static bool is_fullscreen = true;
+    static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
+    ImGuiWindowFlags w_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
+
+    if (is_fullscreen) {
+        ImGuiViewport *viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->Pos);
+        ImGui::SetNextWindowSize(viewport->Size);
+        ImGui::SetNextWindowViewport(viewport->ID);
+
+        w_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
+    }
+
+    ImGui::Begin("DockSpace", nullptr, w_flags);
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
+        ImGuiID dockspace_id = ImGui::GetID("DockSpace");
+        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
+    }
+    ImGui::End();
+}
+
+void drawGUI(const Camera& camera, float fps, float &particle_scale, int &focused_evt, bool &is_mainViewportHovered,
+    MainScene &mainSceneFBO) {
+
+    drawGUIDockspace();
+
+    ImGui::Begin("Main Viewport");
+        const glm::vec3 &cam_pos = camera.pos;
+        
+        // Have to do a bounding check to make sure the mouse is really within the actual main viewport img for cursor callbacks
+        ImVec2 image_sz = ImGui::GetContentRegionAvail();
+        ImVec2 fbo_imageSz = ImVec2(mainSceneFBO.getFBOwidth(), mainSceneFBO.getFBOheight());
+        float img_aspect = image_sz.x / image_sz.y;
+        float fbo_aspect = fbo_imageSz.x / fbo_imageSz.y;
+
+        ImVec2 final_sz;
+        if (fbo_aspect > img_aspect) {
+            // Effectively the height is the limiting factor here, so we should max height and adjust width
+            final_sz = ImVec2(image_sz.x * fbo_aspect, image_sz.x);
+        }
+        else {
+            // Width limiting factor, adjust height
+            final_sz = ImVec2(image_sz.x, image_sz.x / fbo_aspect);
+        }
+
+        ImGui::Image((ImTextureID)mainSceneFBO.getColorTexture(), final_sz, ImVec2(0, 1), ImVec2(1, 0));
+        is_mainViewportHovered = ImGui::IsItemHovered();
     ImGui::End();
 
-    // Top Right FPS Counter //
-    ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x - 300, 0), ImGuiCond_Always);
-    ImGui::Begin("FPS", nullptr, wflags);
+    ImGui::Begin("Load");
+        ImGui::Text("File:");
+
+        if (ImGui::Button("Open File")) {
+            // TODO: This should interact with the EventData object somehow, simply recalling init may not be clean
+        }
+
+        // TODO: Cache recent files and state?
+    ImGui::End();
+
+    ImGui::Begin("Info");
+        ImGui::Text("Camera (World): (%.3f, %.3f, %.3f)", cam_pos.x, cam_pos.y, cam_pos.z);
+        ImGui::Separator();
+        ImGui::SliderFloat("Particle Scale", &particle_scale, 0.1f, 2.5f);
+        ImGui::Separator();
+
         updateFPS(fps);
         float avgFPS = calculateAverageFPS();
         float minFPS = getMinFPS();
@@ -274,21 +355,13 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, int &focuse
         ImGui::PlotLines("##FPS History", fps_historyBuf.data(), fps_historyBuf.size(), fps_bufIdx, nullptr, 0.0f, maxFPS + 10.0f, ImVec2(0, 80));
     ImGui::End();
 
-    // Event Selection //
-    ImGui::SetNextWindowPos(ImVec2(0, 150), ImGuiCond_Always);
-    ImGui::Begin("Event Selection", nullptr, wflags);
-        ImGui::Text("Choose Event To Query:");
-        if (ImGui::Button("Clear")) {
-            focused_evt = -1;
-        }
-        // if (num_evts > 0) {
-            // ImGui::SliderInt("Focused Event", &focused_evt, -1, static_cast<int>(num_evts) - 1);
-        // }
-        // else {
-        //     ImGui::Text("No events loaded");
-        // }
-    ImGui::End();
-} 
+    // TODO: Something like this, should add params
+    // ImGui::Begin("Time Slice Controls");
+    //     ImGui::Text("Adjust left / right pointers:");
+        // ImGui::SliderFLoat("left", &left, lower bound, upper bound)
+        // ImGui::SliderFLoat("left", &left, lower bound, upper bound)
+    // ImGui::End();
+}
 
 float randFloat() {
     return static_cast<float>(rand()) / RAND_MAX;

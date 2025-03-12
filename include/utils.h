@@ -30,7 +30,11 @@ void char_callback(GLFWwindow *window, unsigned int key);
 void resize_callback(GLFWwindow *window, int width, int height);
 bool genBiggestWindow(GLFWwindow *&window, const std::string &window_name="GLFW Window");
 
-void drawGUI(const Camera &camera, float fps, float &particle_scale, int &focused_evt);
+// ImGui //
+void initImGuiStyle(ImGuiStyle &style);
+void drawGUIDockspace();
+void drawGUI(const Camera& camera, float fps, float &particle_scale, int &focused_evt, bool &is_mainViewportHovered,
+             MainScene &mainSceneFBO);
 
 float randFloat();
 glm::vec3 randXYZ();
