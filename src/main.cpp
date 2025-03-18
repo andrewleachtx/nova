@@ -32,88 +32,7 @@ BPMaterial g_lightMat;
 shared_ptr<EventData> g_eventData;
 
 int g_focusedEvent = -1;
-float g_particleScale(1.0f);
-
-// https://github.com/ocornut/imgui/wiki/Docking
-// Creates required dockspace before rendering ImGui windows on top
-// TODO: Can we add power save ? https://github.com/ocornut/imgui/wiki/Implementing-Power-Save,-aka-Idling-outside-of-ImGui
-static void drawGUIDockspace() {
-    static bool is_fullscreen = true;
-    static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
-    ImGuiWindowFlags w_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
-
-    if (is_fullscreen) {
-        ImGuiViewport *viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(viewport->Pos);
-        ImGui::SetNextWindowSize(viewport->Size);
-        ImGui::SetNextWindowViewport(viewport->ID);
-        // ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-
-        w_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
-    }
-
-    ImGui::Begin("DockSpace", nullptr, w_flags);
-    ImGuiIO& io = ImGui::GetIO();
-    if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
-        ImGuiID dockspace_id = ImGui::GetID("DockSpace");
-        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
-    }
-    ImGui::End();
-}
-
-// TODO: Move this and drawGUIDockspace into utils.h/.cpp
-static void drawGUI2(const Camera& camera, float fps, float &particle_scale, int &focused_evt) {
-    drawGUIDockspace();
-
-    ImGui::Begin("Main Viewport");
-        const glm::vec3 &cam_pos = camera.pos;
-        
-        // Have to do a bounding check to make sure the mouse is really within the actual main viewport img for cursor callbacks
-        ImVec2 image_sz = ImGui::GetContentRegionAvail();
-        ImVec2 fbo_imageSz = ImVec2(g_mainSceneFBO.getFBOwidth(), g_mainSceneFBO.getFBOheight());
-        float img_aspect = image_sz.x / image_sz.y;
-        float fbo_aspect = fbo_imageSz.x / fbo_imageSz.y;
-
-        ImVec2 final_sz;
-        if (fbo_aspect > img_aspect) {
-            // Effectively the height is the limiting factor here, so we should max height and adjust width
-            final_sz = ImVec2(image_sz.x * fbo_aspect, image_sz.x);
-        }
-        else {
-            // Width limiting factor, adjust height
-            final_sz = ImVec2(image_sz.x, image_sz.x / fbo_aspect);
-        }
-
-        ImGui::Image((ImTextureID)g_mainSceneFBO.getColorTexture(), final_sz, ImVec2(0, 1), ImVec2(1, 0));
-        g_isMainviewportHovered = ImGui::IsItemHovered();
-    ImGui::End();
-
-    ImGui::Begin("Load");
-        ImGui::Text("File:");
-
-        if (ImGui::Button("Open File")) {
-            // TODO: This should interact with the EventData object somehow, simply recalling init may not be clean
-        }
-
-        // TODO: Cache recent files and state?
-    ImGui::End();
-
-    ImGui::Begin("Info");
-        ImGui::Text("Camera (World): (%.3f, %.3f, %.3f)", cam_pos.x, cam_pos.y, cam_pos.z);
-        ImGui::Separator();
-        ImGui::SliderFloat("Particle Scale", &particle_scale, 0.1f, 2.5f);
-        ImGui::Separator();
-        ImGui::Text("FPS: %.1f", fps);
-        // ImGui::PlotLines("FPS History", fps_historyBuf.data(), fps_historyBuf.size(), fps_bufIdx, nullptr, 0.0f, maxFPS + 10.0f, ImVec2(0, 80));
-    ImGui::End();
-
-    // TODO: Something like this, should add params
-    ImGui::Begin("Time Slice Controls");
-        ImGui::Text("Adjust left / right pointers:");
-        // ImGui::SliderFLoat("left", &left, lower bound, upper bound)
-        // ImGui::SliderFLoat("left", &left, lower bound, upper bound)
-    ImGui::End();
-}
+float g_particleScale(0.35f);
 
 static void init() {
     srand(0);
@@ -127,11 +46,12 @@ static void init() {
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
         io.Fonts->AddFontFromFileTTF(string(g_resourceDir + "/CascadiaCode.ttf").c_str(), 20.0f);
-
-        ImGuiStyle& style = ImGui::GetStyle();
+    
+        // bbb2e9 hex R:187, G:178, B:233
+        ImGuiStyle &style = ImGui::GetStyle();
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
             style.WindowRounding = 0.0f;
             style.Colors[ImGuiCol_WindowBg].w = 1.0f;
@@ -141,17 +61,26 @@ static void init() {
         ImGui_ImplGlfw_InitForOpenGL(g_window, true);
         ImGui_ImplOpenGL3_Init("#version 430");
 
+        initImGuiStyle(style);
+
+    // Load .aedat events into EventData object //
+        g_eventData = make_shared<EventData>();
+        g_eventData->initParticlesFromFile(g_dataFilepath);
+
     // Camera //
         g_camera = Camera();
-        g_camera.setInitPos(0.0f, 0.0f, 0.0f);
+        g_camera.setInitPos(700.0f, 125.0f, 1500.0f);
+        g_camera.setEvtCenter(g_eventData->getCenter());
 
     // Shader Programs //
         g_progScene = genPhongProg(g_resourceDir);
 
     // Load Shape(s) & Scene //
         g_meshSphere.loadMesh(g_resourceDir + "sphere.obj");
+        g_meshCube.loadMesh(g_resourceDir + "cube.obj");
 
         g_meshSphere.init();
+        g_meshCube.init();
 
         g_lightPos = glm::vec3(0.0f, 1000.0f, 0.0f);
         g_lightCol = glm::vec3((187 / 255.0f), (178 / 255.0f), (233 / 255.0f));
@@ -161,27 +90,6 @@ static void init() {
         glfwGetFramebufferSize(g_window, &width, &height);
         g_mainSceneFBO.initialize(width, height);
 
-    // Load .aedat events into EventData object //
-        g_eventData = make_shared<EventData>();
-        g_eventData->initParticlesFromFile(g_dataFilepath);
-
-    GLSL::checkError();
-    cout << "[DEBUG] Made it out of init()" << endl;
-}
-
-static void drawSun(MatrixStack &MV, MatrixStack &P) {
-    Program &prog = g_progScene;
-
-    prog.bind();
-    MV.pushMatrix();
-        MV.translate(g_lightPos);
-        MV.scale(10.0f);
-        
-        sendToPhongShader(prog, P, MV, g_lightPos, g_lightCol, g_lightMat);
-        g_meshSphere.draw(prog);
-    MV.popMatrix();
-    prog.unbind();
-    
     GLSL::checkError();
 }
 
@@ -219,8 +127,11 @@ static void render() {
     g_camera.applyViewMatrix(MV);
     
     // Draw //
-        drawSun(MV, P);
-        g_eventData->draw(MV, P, g_progScene, g_particleScale, g_focusedEvent, g_lightPos, g_lightCol, g_lightMat, g_meshSphere);
+        g_eventData->draw(MV, P, g_progScene,
+                          g_particleScale, g_focusedEvent,
+                          g_lightPos, g_lightCol,
+                          g_lightMat, g_meshSphere,
+                          g_meshCube);
 
     P.popMatrix();
     MV.popMatrix();
@@ -231,7 +142,7 @@ static void render() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         
-        drawGUI2(g_camera, g_fps, g_particleScale, g_focusedEvent);
+        drawGUI(g_camera, g_fps, g_particleScale, g_isMainviewportHovered, g_mainSceneFBO, g_eventData);
     
     // Render ImGui //
         ImGui::Render();
@@ -264,10 +175,12 @@ int main(int argc, char** argv) {
         return -1;
     }
 
+    // TODO: Can keep for a "fullscreen" mode setting later perhaps
     // GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     // const GLFWvidmode* mode = glfwGetVideoMode(monitor);
     // g_window = glfwCreateWindow(mode->width, mode->height, "NOVA", monitor, nullptr);
-    g_window = glfwCreateWindow(1920, 1080, "NOVA", nullptr, nullptr);
+    // g_window = glfwCreateWindow(1920, 1080, "NOVA", nullptr, nullptr);
+    g_window = glfwCreateWindow(1240, 600, "NOVA", nullptr, nullptr);
     if (!g_window) {
         cerr << "Failed to create window" << endl;
         glfwTerminate();
@@ -293,6 +206,7 @@ int main(int argc, char** argv) {
     glfwSwapInterval(1);
     glfwSetKeyCallback(g_window, key_callback);
     glfwSetMouseButtonCallback(g_window, mouse_button_callback);
+    glfwSetScrollCallback(g_window, scroll_callback);
     glfwSetCursorPosCallback(g_window, cursor_position_callback);
     glfwSetCharCallback(g_window, char_callback);
     glfwSetFramebufferSizeCallback(g_window, resize_callback);
