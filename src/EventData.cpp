@@ -185,3 +185,81 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
     MV.popMatrix();
     prog.unbind();
 }
+
+float min(float a, float b) {
+    if (a <= b) {
+        return a;
+    }
+    return b;
+}
+float max(float a, float b) {
+    if (a >= b) {
+        return a;
+    }
+    return b;
+}
+
+void EventData::drawFrame(Program &prog) {
+
+    prog.bind();
+
+    GLuint VBO, VAO;
+    glGenVertexArrays(1, &VAO); 
+    glBindVertexArray(VAO); 
+
+    glGenBuffers(1, &VBO); 
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+    // TODO get rid of this somehow (either just perform once somewhere or get the resolution size from the camera)
+    float min_x = particleBatches[0][0].x;
+    float max_x = particleBatches[0][0].x;
+    float min_y = particleBatches[0][0].y;
+    float max_y = particleBatches[0][0].y;
+    float min_z = particleBatches[0][0].z;
+    float max_z = particleBatches[0][0].z;
+    for (size_t i = 0; i < particleBatches.size(); i++) {
+        for (size_t j = 0; j < particleSizes[i]; j++) {
+            min_x = min(min_x, particleBatches[i][j].x);
+            max_x = max(max_x, particleBatches[i][j].x);
+            min_y = min(min_y, particleBatches[i][j].y);
+            max_y = max(max_y, particleBatches[i][j].y);
+            min_z = min(min_z, particleBatches[i][j].z);
+            max_z = max(max_z, particleBatches[i][j].z);
+        }
+    }
+
+    glm::mat4 projection = glm::ortho(min_x, max_x, min_y, max_y);
+    glUniformMatrix4fv(prog.getUniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
+
+    std::vector<float> total;
+    for (size_t i = 0; i < particleBatches.size(); i++) {
+        for (size_t j = 0; j < particleSizes[i]; j++) {
+            total.push_back(particleBatches[i][j].x);
+            total.push_back(particleBatches[i][j].y);
+        }
+    }
+
+    glBufferData(GL_ARRAY_BUFFER, total.size() * sizeof(float), total.data(), GL_DYNAMIC_DRAW);
+    
+    // Has to be in this order for some reason IDK
+    int pos = prog.getAttribute("pos");
+	glVertexAttribPointer(pos, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+	glEnableVertexAttribArray(pos);
+
+    glPointSize(1.0f);
+    glDrawArrays(GL_POINTS, 0, total.size()); // Probably break up
+
+	// Disable and unbind
+	glDisableVertexAttribArray(pos);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    glBindVertexArray(0);
+	
+    glDeleteBuffers(1, &VBO); // TODO make permanent
+    glDeleteBuffers(1, &VAO);
+
+	GLSL::checkError(GET_FILE_LINE);
+
+    prog.unbind();
+
+}

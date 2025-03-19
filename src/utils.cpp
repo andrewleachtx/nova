@@ -48,6 +48,20 @@ Program genPhongProg(const string &resource_dir) {
     return prog;
 }
 
+Program genBasicProg(const string &resource_dir) {
+    Program prog = Program();
+    prog.setShaderNames(resource_dir + "basic_vsh.glsl", resource_dir + "basic_fsh.glsl");
+    prog.setVerbose(true);
+    prog.init();
+
+    prog.addAttribute("pos");
+    prog.addUniform("projection");
+
+    // prog.setVerbose(false);
+
+    return prog;
+}
+
 void sendToPhongShader(const Program& prog, const MatrixStack& P, const MatrixStack& MV, const vec3& lightPos, const vec3& lightCol, const BPMaterial& mat) {
     glUniformMatrix4fv(prog.getUniform("P"), 1, GL_FALSE, glm::value_ptr(P.topMatrix()));
     glUniformMatrix4fv(prog.getUniform("MV"), 1, GL_FALSE, glm::value_ptr(MV.topMatrix()));
@@ -311,7 +325,7 @@ void drawGUIDockspace() {
 }
 
 void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
-    MainScene &mainSceneFBO, shared_ptr<EventData> &evtData) {
+    MainScene &mainSceneFBO, MainScene &frameSceneFBO, shared_ptr<EventData> &evtData) {
 
     drawGUIDockspace();
 
@@ -372,7 +386,13 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         
         ImGui::SliderFloat("Left", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
         ImGui::SliderFloat("Right", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), ceil(evtData->getMaxTimestamp()));
-        ImGui::End();
+    ImGui::End();
+
+    
+    ImGui::Begin("Frame");
+        ImGui::Text("Frame");
+        ImGui::Image((ImTextureID)frameSceneFBO.getColorTexture(), ImVec2(1240 / 2, 600 / 2), ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::End();
 }
 
 float randFloat() {

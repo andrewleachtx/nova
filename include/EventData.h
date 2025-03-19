@@ -32,6 +32,7 @@ class EventData {
             const glm::vec3 &lightPos, const glm::vec3 &lightColor,
             const BPMaterial &lightMat, const Mesh &meshSphere, 
             const Mesh &meshCube);
+        void drawFrame(Program &prog);
 
         const glm::vec3 &getCenter() const { return center; }
         const float &getMaxTimestamp() const { return max_XYZ.z; }
