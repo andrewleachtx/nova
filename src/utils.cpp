@@ -388,10 +388,9 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::SliderFloat("Right", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), ceil(evtData->getMaxTimestamp()));
     ImGui::End();
 
-    
     ImGui::Begin("Frame");
         ImGui::Text("Frame");
-        ImGui::Image((ImTextureID)frameSceneFBO.getColorTexture(), ImVec2(1240 / 2, 600 / 2), ImVec2(0, 1), ImVec2(1, 0));
+        ImGui::Image((ImTextureID)frameSceneFBO.getColorTexture(), ImVec2(1240 / 2, 600 / 2));
     ImGui::End();
 }
 

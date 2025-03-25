@@ -150,6 +150,21 @@ static void render() {
     // Draw Frame //
         g_eventData->drawFrame(g_progFrameScene);
 
+        // std::vector<glm::vec3> eigenvectors = {
+        //     {1, 2, 3}, 
+        //     {4, 5, 6},
+        //     {0, 0, 1}
+        //   };
+        //     glm::vec3 start = {0.0f, 0.0f, 0.0f};
+        //     glm::vec3 end = {1.0f, 1.0f, 1.0f};
+        //     for (const auto& vec: eigenvectors) {
+        //     glm::vec3 origin(0.0f, 0.0f, 0.0f);
+        //     glBegin(GL_LINES);
+        //     glVertex3f(start.x, start.y,start.z);
+        //     glVertex3f(end.x, end.y,end.z);
+        //     glEnd();
+        // }
+
     g_frameSceneFBO.unbind();
 
     // Build ImGui Docking & Main Viewport //

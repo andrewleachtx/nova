@@ -7,11 +7,12 @@
 
 EventData::EventData() : initTimestamp(0), lastTimestamp(0), timeWindow_L(-1.0f), timeWindow_R(-1.0f),
     min_XYZ(std::numeric_limits<float>::max()), max_XYZ(std::numeric_limits<float>::lowest()),
-    center(glm::vec3(0.0f)) {}
+    center(glm::vec3(0.0f)), mod_freq(100) {}
 EventData::~EventData() {}
 
 void EventData::initParticlesFromFile(const std::string &filename, size_t mod_freq) {
     dv::io::MonoCameraRecording reader(filename);
+    this->mod_freq = mod_freq;
 
     // TODO: Should just write a reset method using this and call it for sanity check
     size_t max_batchSz = 0;
@@ -19,6 +20,7 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t mod_fr
     particleSizes.clear();
     initTimestamp = 0;
     lastTimestamp = 0;
+
     glm::vec3 raw_minXYZ = glm::vec3(std::numeric_limits<float>::max());
     glm::vec3 raw_maxXYZ = glm::vec3(std::numeric_limits<float>::lowest());
 
@@ -35,15 +37,13 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t mod_fr
 
                 lastTimestamp = std::max(lastTimestamp, event.timestamp());
 
-                if (i % mod_freq == 0) {
-                    float relativeTimestamp = static_cast<float>(event.timestamp() - initTimestamp);
-                    glm::vec3 event_xyz = glm::vec3(static_cast<float>(event.x()), static_cast<float>(event.y()), relativeTimestamp);
-                    evtBatch.push_back(event_xyz);
+                float relativeTimestamp = static_cast<float>(event.timestamp() - initTimestamp);
+                glm::vec3 event_xyz = glm::vec3(static_cast<float>(event.x()), static_cast<float>(event.y()), relativeTimestamp);
+                evtBatch.push_back(event_xyz);
 
-                    // glm::min/max are beautiful functions. Guarantees each component is min/max'd always
-                    raw_minXYZ = glm::min(raw_minXYZ, event_xyz);
-                    raw_maxXYZ = glm::max(raw_maxXYZ, event_xyz);
-                }
+                // glm::min/max are beautiful functions. Guarantees each component is min/max'd always
+                raw_minXYZ = glm::min(raw_minXYZ, event_xyz);
+                raw_maxXYZ = glm::max(raw_maxXYZ, event_xyz);
             }
 
             max_batchSz = std::max(max_batchSz, evtBatch.size());
@@ -165,6 +165,8 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
     MV.pushMatrix();
         for (size_t i = 0; i < particleBatches.size(); i++) {
             for (size_t j = 0; j < particleSizes[i]; j++) {
+                if (j % this->mod_freq == 0) {
+
                 MV.pushMatrix();
                 MV.translate(particleBatches[i][j]);
                 MV.scale(particleScale);
@@ -178,6 +180,7 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
                 sendToPhongShader(prog, P, MV, lightPos, color, lightMat);
                 meshSphere.draw(prog);
                 MV.popMatrix();
+                }
             }
         }
         
@@ -227,6 +230,7 @@ void EventData::drawFrame(Program &prog) {
             max_z = max(max_z, particleBatches[i][j].z);
         }
     }
+    // printf("%f %f\n", min_z, max_z);
 
     glm::mat4 projection = glm::ortho(min_x, max_x, min_y, max_y);
     glUniformMatrix4fv(prog.getUniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
@@ -234,8 +238,11 @@ void EventData::drawFrame(Program &prog) {
     std::vector<float> total;
     for (size_t i = 0; i < particleBatches.size(); i++) {
         for (size_t j = 0; j < particleSizes[i]; j++) {
-            total.push_back(particleBatches[i][j].x);
-            total.push_back(particleBatches[i][j].y);
+
+            if (particleBatches[i][j].z <= getTimeWindow_R() && particleBatches[i][j].z >= getTimeWindow_L()) {
+                total.push_back(particleBatches[i][j].x);
+                total.push_back(particleBatches[i][j].y);
+            }
         }
     }
 
@@ -246,7 +253,7 @@ void EventData::drawFrame(Program &prog) {
 	glVertexAttribPointer(pos, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 	glEnableVertexAttribArray(pos);
 
-    glPointSize(1.0f);
+    glPointSize(1.0f); 
     glDrawArrays(GL_POINTS, 0, total.size()); // Probably break up
 
 	// Disable and unbind
@@ -259,6 +266,7 @@ void EventData::drawFrame(Program &prog) {
     glDeleteBuffers(1, &VAO);
 
 	GLSL::checkError(GET_FILE_LINE);
+
 
     prog.unbind();
 

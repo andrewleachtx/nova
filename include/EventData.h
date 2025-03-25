@@ -50,6 +50,8 @@ class EventData {
 
         float timeWindow_L;
         float timeWindow_R;
+
+        size_t mod_freq;
             
         // We can define a bounding box and thus center to rotate around
         glm::vec3 min_XYZ;
