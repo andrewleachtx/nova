@@ -385,7 +385,7 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
 
         ImGui::Text("Time Window (%.3f, %.3f)", evtData->getTimeWindow_L(), evtData->getTimeWindow_R());
         
-        ImGui::SliderFloat("Left", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp()); 
+        ImGui::SliderFloat("Left", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp()); // TODO format
         ImGui::SliderFloat("Right", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), ceil(evtData->getMaxTimestamp()));
         ImGui::SliderFloat("##FrameLength", &evtData->getFrameLength(), 0, evtData->getMaxTimestamp()); 
         ImGui::SameLine();
@@ -400,6 +400,13 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         }
         ImGui::SameLine();
         ImGui::Text("Frame Length (ms)");
+
+        ImGui::Separator();
+
+        ImGui::SliderFloat("Top", &evtData->getSpaceWindow().x, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y); 
+        ImGui::SliderFloat("RightS", &evtData->getSpaceWindow().y, evtData->getMin_XYZ().x, ceil(evtData->getMax_XYZ().x));
+        ImGui::SliderFloat("Bottom", &evtData->getSpaceWindow().z, evtData->getMin_XYZ().y, ceil(evtData->getMax_XYZ().y));
+        ImGui::SliderFloat("LeftS", &evtData->getSpaceWindow().w, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x); 
 
     ImGui::End();
 

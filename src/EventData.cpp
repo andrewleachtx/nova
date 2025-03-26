@@ -8,7 +8,7 @@
 // TODO ask about default -1
 EventData::EventData() : initTimestamp(0), lastTimestamp(0), timeWindow_L(-1.0f), timeWindow_R(-1.0f),
     min_XYZ(std::numeric_limits<float>::max()), max_XYZ(std::numeric_limits<float>::lowest()),
-    center(glm::vec3(0.0f)), mod_freq(100), frameLength(0) {}
+    center(glm::vec3(0.0f)), mod_freq(1), frameLength(0) {}
 EventData::~EventData() {}
 
 void EventData::initParticlesFromFile(const std::string &filename, size_t freq) {
@@ -30,6 +30,7 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t freq) 
         if (const auto events = reader.getNextEventBatch(); events.has_value()) {
             std::vector<glm::vec3> evtBatch;
             for (size_t i = 0; i < events.value().size(); i++) {
+                // if (i % freq != 0 && false) { continue; } TODO speed up
                 const auto &event = events.value()[i];
                 
                 if (particleBatches.empty() && evtBatch.empty()) {
@@ -73,6 +74,8 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t freq) 
     min_XYZ.z *= diff_scale;
     max_XYZ.z *= diff_scale;
     center = 0.5f * (min_XYZ + max_XYZ);
+
+    this->spaceWindow = glm::vec4(min_XYZ.y, max_XYZ.x, max_XYZ.y, min_XYZ.x);
 
     printf("Loaded %zu event batches\n", particleBatches.size());
     printf("Biggest batch size: %zu\n", max_batchSz);
@@ -246,11 +249,15 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
             float t = particleBatches[i][j].z;
 
             if (t <= getTimeWindow_R() && t >= getTimeWindow_L()) {
-                total.push_back(x);
-                total.push_back(y);
 
-                rolling_sum.x += x;
-                rolling_sum.y += y;
+                // x == top, y == right, z == bottom, w == left
+                if (x >= getSpaceWindow().w && x <= getSpaceWindow().y && y >= getSpaceWindow().x && y <= getSpaceWindow().z) {
+                    total.push_back(x);
+                    total.push_back(y);
+
+                    rolling_sum.x += x;
+                    rolling_sum.y += y;
+                }
             }
         }
     }
