@@ -196,6 +196,7 @@ void resize_callback(GLFWwindow *window, int width, int height) {
 
     // Update the FBO
     wc->mainSceneFBO->resize(width, height);
+    wc->frameSceneFBO->resize(width, height);
 }
 
 // Looks for the biggest monitor
@@ -384,13 +385,31 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
 
         ImGui::Text("Time Window (%.3f, %.3f)", evtData->getTimeWindow_L(), evtData->getTimeWindow_R());
         
-        ImGui::SliderFloat("Left", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
+        ImGui::SliderFloat("Left", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp()); 
         ImGui::SliderFloat("Right", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), ceil(evtData->getMaxTimestamp()));
+        ImGui::SliderFloat("##FrameLength", &evtData->getFrameLength(), 0, evtData->getMaxTimestamp()); 
+        ImGui::SameLine();
+        if (ImGui::Button("-")) { // TODO clean code
+            evtData->getTimeWindow_L() = glm::max(evtData->getTimeWindow_L() - evtData->getFrameLength(), evtData->getMinTimestamp());
+            evtData->getTimeWindow_R() = glm::max(evtData->getTimeWindow_R() - evtData->getFrameLength(), evtData->getMinTimestamp());
+        } 
+        ImGui::SameLine();
+        if (ImGui::Button("+")) {
+            evtData->getTimeWindow_L() = glm::min(evtData->getTimeWindow_L() + evtData->getFrameLength(), evtData->getMaxTimestamp());
+            evtData->getTimeWindow_R() = glm::min(evtData->getTimeWindow_R() + evtData->getFrameLength(), evtData->getMaxTimestamp());
+        }
+        ImGui::SameLine();
+        ImGui::Text("Frame Length (ms)");
+
     ImGui::End();
 
     ImGui::Begin("Frame");
-        ImGui::Text("Frame");
-        ImGui::Image((ImTextureID)frameSceneFBO.getColorTexture(), ImVec2(1240 / 2, 600 / 2));
+        ImGui::Text("Digital Coded Exposure"); 
+
+        // TODO ask Andrew about aspect ratio standards/preferences
+        image_sz = ImGui::GetContentRegionAvail();
+        final_sz = ImVec2(image_sz.x, image_sz.y); // fbo viewport is static ish
+        ImGui::Image((ImTextureID)frameSceneFBO.getColorTexture(), final_sz);
     ImGui::End();
 }
 

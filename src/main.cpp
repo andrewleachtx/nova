@@ -148,22 +148,13 @@ static void render() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO need depth bit?
 
     // Draw Frame //
-        g_eventData->drawFrame(g_progFrameScene);
-
-        // std::vector<glm::vec3> eigenvectors = {
-        //     {1, 2, 3}, 
-        //     {4, 5, 6},
-        //     {0, 0, 1}
-        //   };
-        //     glm::vec3 start = {0.0f, 0.0f, 0.0f};
-        //     glm::vec3 end = {1.0f, 1.0f, 1.0f};
-        //     for (const auto& vec: eigenvectors) {
-        //     glm::vec3 origin(0.0f, 0.0f, 0.0f);
-        //     glBegin(GL_LINES);
-        //     glVertex3f(start.x, start.y,start.z);
-        //     glVertex3f(end.x, end.y,end.z);
-        //     glEnd();
-        // }
+        std::vector<glm::vec3> eigenvectors;
+        g_eventData->drawFrame(g_progFrameScene, eigenvectors);
+        
+        glBegin(GL_LINES);
+        glVertex3f(eigenvectors[0].x, eigenvectors[0].y, eigenvectors[0].z);
+        glVertex3f(eigenvectors[1].x, eigenvectors[1].y, eigenvectors[1].z);
+        glEnd();
 
     g_frameSceneFBO.unbind();
 
@@ -218,7 +209,7 @@ int main(int argc, char** argv) {
     }
 
     // Placement above init() assumes parameters are initialized, and that wc has inf lifetime 
-    WindowContext wc = { &g_camera, &g_cursorVisible, g_keyToggles, &g_isMainviewportHovered, &g_mainSceneFBO, &g_frameSceneFBO }; // TODO expand
+    WindowContext wc = { &g_camera, &g_cursorVisible, g_keyToggles, &g_isMainviewportHovered, &g_mainSceneFBO, &g_frameSceneFBO }; 
     glfwSetWindowUserPointer(g_window, &wc);
     glfwMakeContextCurrent(g_window);
 

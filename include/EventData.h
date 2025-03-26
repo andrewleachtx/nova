@@ -24,7 +24,7 @@ class EventData {
         EventData();
         ~EventData();
 
-        void initParticlesFromFile(const std::string &filename, size_t mod_freq=100);
+        void initParticlesFromFile(const std::string &filename, size_t freq=100);
 
         void drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &prog, float particleScale);
         void draw(MatrixStack &MV, MatrixStack &P, Program &prog,
@@ -32,13 +32,14 @@ class EventData {
             const glm::vec3 &lightPos, const glm::vec3 &lightColor,
             const BPMaterial &lightMat, const Mesh &meshSphere, 
             const Mesh &meshCube);
-        void drawFrame(Program &prog);
+        void drawFrame(Program &prog, std::vector<glm::vec3> &eigenvectors);
 
         const glm::vec3 &getCenter() const { return center; }
         const float &getMaxTimestamp() const { return max_XYZ.z; }
         const float &getMinTimestamp() const { return min_XYZ.z; }
         float &getTimeWindow_L() { return timeWindow_L; }
         float &getTimeWindow_R() { return timeWindow_R; }
+        float &getFrameLength() { return frameLength; }
 
     private:
         std::vector< std::vector<glm::vec3> > particleBatches;
@@ -52,6 +53,7 @@ class EventData {
         float timeWindow_R;
 
         size_t mod_freq;
+        float frameLength;
             
         // We can define a bounding box and thus center to rotate around
         glm::vec3 min_XYZ;

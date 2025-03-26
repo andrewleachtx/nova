@@ -5,14 +5,15 @@
 #include <cstdio>
 #include <dv-processing/core/utils.hpp>
 
+// TODO ask about default -1
 EventData::EventData() : initTimestamp(0), lastTimestamp(0), timeWindow_L(-1.0f), timeWindow_R(-1.0f),
     min_XYZ(std::numeric_limits<float>::max()), max_XYZ(std::numeric_limits<float>::lowest()),
-    center(glm::vec3(0.0f)), mod_freq(100) {}
+    center(glm::vec3(0.0f)), mod_freq(100), frameLength(0) {}
 EventData::~EventData() {}
 
-void EventData::initParticlesFromFile(const std::string &filename, size_t mod_freq) {
+void EventData::initParticlesFromFile(const std::string &filename, size_t freq) {
     dv::io::MonoCameraRecording reader(filename);
-    this->mod_freq = mod_freq;
+    this->mod_freq = freq;
 
     // TODO: Should just write a reset method using this and call it for sanity check
     size_t max_batchSz = 0;
@@ -189,6 +190,7 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
     prog.unbind();
 }
 
+// TODO use glm
 float min(float a, float b) {
     if (a <= b) {
         return a;
@@ -202,7 +204,7 @@ float max(float a, float b) {
     return b;
 }
 
-void EventData::drawFrame(Program &prog) {
+void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
 
     prog.bind();
 
@@ -230,24 +232,66 @@ void EventData::drawFrame(Program &prog) {
             max_z = max(max_z, particleBatches[i][j].z);
         }
     }
-    // printf("%f %f\n", min_z, max_z);
+
 
     glm::mat4 projection = glm::ortho(min_x, max_x, min_y, max_y);
     glUniformMatrix4fv(prog.getUniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
+    glm::vec2 rolling_sum(0.0f, 0.0f);
     std::vector<float> total;
-    for (size_t i = 0; i < particleBatches.size(); i++) {
-        for (size_t j = 0; j < particleSizes[i]; j++) {
+    for (size_t i = 0; i < particleBatches.size(); ++i) {
+        for (size_t j = 0; j < particleSizes[i]; ++j) {
+            float x = particleBatches[i][j].x;
+            float y = particleBatches[i][j].y;
+            float t = particleBatches[i][j].z;
 
-            if (particleBatches[i][j].z <= getTimeWindow_R() && particleBatches[i][j].z >= getTimeWindow_L()) {
-                total.push_back(particleBatches[i][j].x);
-                total.push_back(particleBatches[i][j].y);
+            if (t <= getTimeWindow_R() && t >= getTimeWindow_L()) {
+                total.push_back(x);
+                total.push_back(y);
+
+                rolling_sum.x += x;
+                rolling_sum.y += y;
             }
         }
     }
 
+    // Calculate covariance // TODO improve normalization
+    float mean_x = rolling_sum.x / max_x / total.size() / 2;
+    float mean_y = rolling_sum.y / max_y / total.size() / 2;
+
+    float cov_x_y = 0;
+    float cov_x_x = 0;
+    float cov_y_y = 0;
+    for (size_t i = 0; i < total.size(); i += 2) {
+        float x = total[i];
+        float y = total[i + 1];
+
+        cov_x_y += (x / max_x - mean_x) * (y / max_y - mean_y);
+        cov_x_x += (x / max_x - mean_x) * (x / max_x - mean_x);
+        cov_y_y += (y / max_y - mean_y) * (y / max_y - mean_y);
+    }
+
+    cov_x_y /= (total.size() / 2 - 1);
+    cov_x_x /= (total.size() / 2 - 1);
+    cov_y_y /= (total.size() / 2 - 1);
+
+    // Matrix
+    float a = 1;
+    float b = -(cov_x_x + cov_y_y);
+    float c = cov_x_x * cov_y_y - cov_x_y * cov_x_y;
+
+    float eigen1 = (-b + std::sqrt(b*b - 4 * a * c)) / (2 * a);
+    float eigen2 = (-b - std::sqrt(b*b - 4 * a * c)) / (2 * a);
+
+    // Eigen vector 1
+    eigenvectors.push_back(glm::vec3(eigen1 - cov_y_y, cov_x_y, 1));
+
+    // Eigen vector 2
+    eigenvectors.push_back(glm::vec3(eigen2 - cov_y_y, cov_x_y, 1));
+
+    // Load data points
     glBufferData(GL_ARRAY_BUFFER, total.size() * sizeof(float), total.data(), GL_DYNAMIC_DRAW);
-    
+
     // Has to be in this order for some reason IDK
     int pos = prog.getAttribute("pos");
 	glVertexAttribPointer(pos, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
