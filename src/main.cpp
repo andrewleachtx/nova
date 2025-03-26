@@ -34,6 +34,17 @@ shared_ptr<EventData> g_eventData;
 int g_focusedEvent = -1;
 float g_particleScale(0.35f);
 
+static void setDataAndCamera(){
+    // Load .aedat events into EventData object //
+    g_eventData = make_shared<EventData>();
+    g_eventData->initParticlesFromFile(g_dataFilepath);
+
+    // Camera //
+    g_camera = Camera();
+    g_camera.setInitPos(700.0f, 125.0f, 1500.0f);
+    g_camera.setEvtCenter(g_eventData->getCenter());
+}
+
 static void init() {
     srand(0);
 
@@ -63,14 +74,8 @@ static void init() {
 
         initImGuiStyle(style);
 
-    // Load .aedat events into EventData object //
-        g_eventData = make_shared<EventData>();
-        g_eventData->initParticlesFromFile(g_dataFilepath);
-
-    // Camera //
-        g_camera = Camera();
-        g_camera.setInitPos(700.0f, 125.0f, 1500.0f);
-        g_camera.setEvtCenter(g_eventData->getCenter());
+    //initialize data + initialize camera and set it's center//
+        setDataAndCamera();
 
     // Shader Programs //
         g_progScene = genPhongProg(g_resourceDir);
@@ -142,7 +147,7 @@ static void render() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         
-        drawGUI(g_camera, g_fps, g_particleScale, g_isMainviewportHovered, g_mainSceneFBO, g_eventData);
+        drawGUI(g_camera, g_fps, g_particleScale, g_isMainviewportHovered, g_mainSceneFBO, g_eventData, g_dataFilepath);
     
     // Render ImGui //
         ImGui::Render();
@@ -214,8 +219,11 @@ int main(int argc, char** argv) {
     init();
 
     while (!glfwWindowShouldClose(g_window)) {
+        string oldfilepath = g_dataFilepath;
         render();
-
+        if(g_dataFilepath!=oldfilepath){
+            setDataAndCamera();
+        }
         glfwSwapBuffers(g_window);
         glfwPollEvents();
     }
