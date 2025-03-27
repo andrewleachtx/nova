@@ -400,13 +400,20 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         }
         ImGui::SameLine();
         ImGui::Text("Frame Length (ms)");
-
         ImGui::Separator();
+
+        ImGui::Text("Space Window");
 
         ImGui::SliderFloat("Top", &evtData->getSpaceWindow().x, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y); 
         ImGui::SliderFloat("RightS", &evtData->getSpaceWindow().y, evtData->getMin_XYZ().x, ceil(evtData->getMax_XYZ().x));
         ImGui::SliderFloat("Bottom", &evtData->getSpaceWindow().z, evtData->getMin_XYZ().y, ceil(evtData->getMax_XYZ().y));
         ImGui::SliderFloat("LeftS", &evtData->getSpaceWindow().w, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x); 
+
+        ImGui::Separator();
+
+        ImGui::Text("Processing options");
+        ImGui::Checkbox("Morlet Shutter", &evtData->getMorlet()); // Todo add h and f sliders; Fix time normalizations
+        ImGui::Checkbox("PCA", &evtData->getPCA());
 
     ImGui::End();
 

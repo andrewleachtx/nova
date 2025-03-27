@@ -8,7 +8,7 @@
 // TODO ask about default -1
 EventData::EventData() : initTimestamp(0), lastTimestamp(0), timeWindow_L(-1.0f), timeWindow_R(-1.0f),
     min_XYZ(std::numeric_limits<float>::max()), max_XYZ(std::numeric_limits<float>::lowest()),
-    center(glm::vec3(0.0f)), mod_freq(1), frameLength(0) {}
+    center(glm::vec3(0.0f)), mod_freq(1), frameLength(0), morlet(false), pca(false) {}
 EventData::~EventData() {}
 
 void EventData::initParticlesFromFile(const std::string &filename, size_t freq) {
@@ -28,9 +28,9 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t freq) 
     // https://dv-processing.inivation.com/rel_1_7/reading_data.html#read-events-from-a-file
     while (reader.isRunning()) {
         if (const auto events = reader.getNextEventBatch(); events.has_value()) {
-            std::vector<glm::vec3> evtBatch;
+            std::vector<glm::vec4> evtBatch;
             for (size_t i = 0; i < events.value().size(); i++) {
-                // if (i % freq != 0 && false) { continue; } TODO speed up
+                // if (i % freq != 0 && false) { continue; } // TODO speed up
                 const auto &event = events.value()[i];
                 
                 if (particleBatches.empty() && evtBatch.empty()) {
@@ -40,12 +40,13 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t freq) 
                 lastTimestamp = std::max(lastTimestamp, event.timestamp());
 
                 float relativeTimestamp = static_cast<float>(event.timestamp() - initTimestamp);
-                glm::vec3 event_xyz = glm::vec3(static_cast<float>(event.x()), static_cast<float>(event.y()), relativeTimestamp);
-                evtBatch.push_back(event_xyz);
+                glm::vec4 event_xyzw = glm::vec4(static_cast<float>(event.x()), static_cast<float>(event.y()), 
+                    relativeTimestamp, static_cast<float>(event.polarity()));
+                evtBatch.push_back(event_xyzw);
 
                 // glm::min/max are beautiful functions. Guarantees each component is min/max'd always
-                raw_minXYZ = glm::min(raw_minXYZ, event_xyz);
-                raw_maxXYZ = glm::max(raw_maxXYZ, event_xyz);
+                raw_minXYZ = glm::min(raw_minXYZ, glm::vec3(event_xyzw)); // TODO simplify
+                raw_maxXYZ = glm::max(raw_maxXYZ, glm::vec3(event_xyzw));
             }
 
             max_batchSz = std::max(max_batchSz, evtBatch.size());
@@ -62,7 +63,7 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t freq) 
 
     // Each particle is grouped by event s.t. particle[i] stores a vector of glm::vec3 with a normalized abs. timestamp
     for (size_t i = 0; i < particleBatches.size(); i++) {
-        particleBatches[i].resize(max_batchSz, glm::vec3(0.0f));
+        particleBatches[i].resize(max_batchSz, glm::vec4(0.0f));
         for (size_t j = 0; j < particleSizes[i]; j++) {
             particleBatches[i][j].z = particleBatches[i][j].z * diff_scale;
         }
@@ -193,22 +194,18 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
     prog.unbind();
 }
 
-// TODO use glm
-float min(float a, float b) {
-    if (a <= b) {
-        return a;
-    }
-    return b;
-}
-float max(float a, float b) {
-    if (a >= b) {
-        return a;
-    }
-    return b;
+float contribution(float t, float center_t) {
+    float f = 125;
+    float h = 4 / (1 * f);
+    // printf("%f \n", h);
+    t = t - center_t / 2;
+    auto complex_result = std::exp(2.0f * std::complex<float>(0.0f, 1.0f) * std::acos(-1.0f) * f *  t) * 
+        (float) std::exp((-4.0f * std::log(2.0f) * std::pow(t, 2.0f)) / std::pow(h, 2.0f));
+    complex_result *= 0.1f; // TODO contribution
+    return std::real(complex_result) + std::imag(complex_result);
 }
 
 void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
-
     prog.bind();
 
     GLuint VBO, VAO;
@@ -218,25 +215,10 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
     glGenBuffers(1, &VBO); 
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
-    // TODO get rid of this somehow (either just perform once somewhere or get the resolution size from the camera)
-    float min_x = particleBatches[0][0].x;
-    float max_x = particleBatches[0][0].x;
-    float min_y = particleBatches[0][0].y;
-    float max_y = particleBatches[0][0].y;
-    float min_z = particleBatches[0][0].z;
-    float max_z = particleBatches[0][0].z;
-    for (size_t i = 0; i < particleBatches.size(); i++) {
-        for (size_t j = 0; j < particleSizes[i]; j++) {
-            min_x = min(min_x, particleBatches[i][j].x);
-            max_x = max(max_x, particleBatches[i][j].x);
-            min_y = min(min_y, particleBatches[i][j].y);
-            max_y = max(max_y, particleBatches[i][j].y);
-            min_z = min(min_z, particleBatches[i][j].z);
-            max_z = max(max_z, particleBatches[i][j].z);
-        }
-    }
-
-
+    float min_x = this->min_XYZ.x;
+    float max_x = this->max_XYZ.x;
+    float min_y = this->min_XYZ.y;
+    float max_y = this->max_XYZ.y;
     glm::mat4 projection = glm::ortho(min_x, max_x, min_y, max_y);
     glUniformMatrix4fv(prog.getUniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
@@ -247,6 +229,7 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
             float x = particleBatches[i][j].x;
             float y = particleBatches[i][j].y;
             float t = particleBatches[i][j].z;
+            float polarity = particleBatches[i][j].w;
 
             if (t <= getTimeWindow_R() && t >= getTimeWindow_L()) {
 
@@ -255,9 +238,17 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
                     total.push_back(x);
                     total.push_back(y);
 
+                    float weight = morlet ? contribution(t, getTimeWindow_R() - getTimeWindow_L() * polarity) : 1.0f; 
+                    total.push_back(weight);
+
                     rolling_sum.x += x;
                     rolling_sum.y += y;
                 }
+
+            }
+            else { // Assumes strictly increasing
+                break;
+
             }
         }
     }
@@ -290,10 +281,8 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
     float eigen1 = (-b + std::sqrt(b*b - 4 * a * c)) / (2 * a);
     float eigen2 = (-b - std::sqrt(b*b - 4 * a * c)) / (2 * a);
 
-    // Eigen vector 1
+    // Eigen vectors
     eigenvectors.push_back(glm::vec3(eigen1 - cov_y_y, cov_x_y, 1));
-
-    // Eigen vector 2
     eigenvectors.push_back(glm::vec3(eigen2 - cov_y_y, cov_x_y, 1));
 
     // Load data points
@@ -301,7 +290,7 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
 
     // Has to be in this order for some reason IDK
     int pos = prog.getAttribute("pos");
-	glVertexAttribPointer(pos, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+	glVertexAttribPointer(pos, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 	glEnableVertexAttribArray(pos);
 
     glPointSize(1.0f); 

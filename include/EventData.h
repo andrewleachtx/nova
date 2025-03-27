@@ -43,11 +43,15 @@ class EventData {
         float &getTimeWindow_R() { return timeWindow_R; }
         float &getFrameLength() { return frameLength; }
         glm::vec4 &getSpaceWindow() { return spaceWindow; }
+        bool &getMorlet() { return morlet; }
+        bool &getPCA() { return pca; }
 
 
 
     private:
-        std::vector< std::vector<glm::vec3> > particleBatches;
+        std::vector< std::vector<glm::vec4> > particleBatches; // x, y, t, polarity
+        size_t mod_freq;
+
         // Because we pad, we need to store the range of usable particles
         std::vector<size_t> particleSizes;
 
@@ -56,12 +60,13 @@ class EventData {
 
         float timeWindow_L;
         float timeWindow_R;
+        float frameLength;
 
         glm::vec4 spaceWindow; // x = top, y = right, z = bottom, w = left 
-
-        size_t mod_freq;
-        float frameLength;
             
+        bool morlet;
+        bool pca;
+
         // We can define a bounding box and thus center to rotate around
         glm::vec3 min_XYZ;
         glm::vec3 max_XYZ;

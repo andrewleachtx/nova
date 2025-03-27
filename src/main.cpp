@@ -59,7 +59,7 @@ static void init() {
             style.Colors[ImGuiCol_WindowBg].w = 1.0f;
         }
 
-        ImGui::StyleColorsDark();
+        ImGui::StyleColorsDark(); 
         ImGui_ImplGlfw_InitForOpenGL(g_window, true);
         ImGui_ImplOpenGL3_Init("#version 430");
 
@@ -92,7 +92,7 @@ static void init() {
         int width, height;
         glfwGetFramebufferSize(g_window, &width, &height);
         g_mainSceneFBO.initialize(width, height);
-        g_frameSceneFBO.initialize(width, height);
+        g_frameSceneFBO.initialize(width, height, true); // TODO consider normalization
 
     GLSL::checkError();
 }
@@ -145,16 +145,20 @@ static void render() {
     glViewport(0, 0, width, height); // TODO change width and height
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glDisable(GL_DEPTH_TEST); // TODO necessary?
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO need depth bit?
 
     // Draw Frame //
         std::vector<glm::vec3> eigenvectors;
-        g_eventData->drawFrame(g_progFrameScene, eigenvectors);
-        
-        glBegin(GL_LINES);
-        glVertex3f(eigenvectors[0].x, eigenvectors[0].y, eigenvectors[0].z);
-        glVertex3f(eigenvectors[1].x, eigenvectors[1].y, eigenvectors[1].z);
-        glEnd();
+        g_eventData->drawFrame(g_progFrameScene, eigenvectors); 
+            
+        if (g_eventData->getPCA()) { // TODO integrate into drawFrame
+            glBegin(GL_LINES);
+            glVertex3f(eigenvectors[0].x, eigenvectors[0].y, eigenvectors[0].z);
+            glVertex3f(eigenvectors[1].x, eigenvectors[1].y, eigenvectors[1].z);
+            glEnd();
+        }
 
     g_frameSceneFBO.unbind();
 

@@ -13,7 +13,7 @@ public:
     MainScene();
     ~MainScene();
 
-    bool initialize(int width, int height);
+    bool initialize(int width, int height, bool frame = false);
 
     void resize(int width, int height);
 
