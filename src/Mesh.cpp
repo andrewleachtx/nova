@@ -151,7 +151,7 @@ void Mesh::init() {
     GLSL::checkError(GET_FILE_LINE);
 }
 
-
+// Unused
 void Mesh::updatePosBuf(const std::vector<glm::vec3>& new_posBuf) {
     if (posBuf.size() != new_posBuf.size() * 3) {
         cerr << "Pos buf size different, failing to update" << __FILE__ << ": " << __LINE__ << endl; 

@@ -17,10 +17,47 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <Windows.h>
+#include <shobjidl.h>
+
 using std::cout, std::endl, std::cerr;
 using std::shared_ptr, std::make_shared;
 using std::vector, std::string;
 using glm::vec3;
+
+string OpenFileDialog() {
+    HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    if (FAILED(hr)) return "";
+
+    IFileOpenDialog* pFileOpen;
+    hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
+    if (FAILED(hr)) {
+        CoUninitialize();
+        return "";
+    }
+
+    hr = pFileOpen->Show(NULL);
+    if (SUCCEEDED(hr)) {
+        IShellItem* pItem;
+        hr = pFileOpen->GetResult(&pItem);
+        if (SUCCEEDED(hr)) {
+            PWSTR filePath;
+            hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &filePath);
+            if (SUCCEEDED(hr)) {
+                std::wstring ws(filePath);
+                string path(ws.begin(), ws.end());
+                CoTaskMemFree(filePath);
+                pItem->Release();
+                pFileOpen->Release();
+                CoUninitialize();
+                return path;
+            }
+        }
+    }
+    pFileOpen->Release();
+    CoUninitialize();
+    return "";
+}
 
 Program genPhongProg(const string &resource_dir) {
     Program prog = Program();
@@ -42,6 +79,20 @@ Program genPhongProg(const string &resource_dir) {
     prog.addUniform("kd");
     prog.addUniform("ks");
     prog.addUniform("s");
+
+    // prog.setVerbose(false);
+
+    return prog;
+}
+
+Program genBasicProg(const string &resource_dir) {
+    Program prog = Program();
+    prog.setShaderNames(resource_dir + "basic_vsh.glsl", resource_dir + "basic_fsh.glsl");
+    prog.setVerbose(true);
+    prog.init();
+
+    prog.addAttribute("pos");
+    prog.addUniform("projection");
 
     // prog.setVerbose(false);
 
@@ -128,6 +179,7 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 }
 
 // Mouse scroll
+// FIXME: Add callback to Camera to handle (smooth?) scrolling AND correct scroll pivot AND and avoid ImGui scroll override
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
     WindowContext* wc = static_cast<WindowContext*>(glfwGetWindowUserPointer(window));
 
@@ -135,7 +187,7 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
         return;
     }
 
-    // TODO: Add a function in the camera class to handle scrolling, also need to avoid ImGui scroll override
+    // TODO: Replace with Camera callback; see FIXME above
     wc->camera->translations.z -= 100.0f * (float)yoffset;
 }
 
@@ -182,6 +234,7 @@ void resize_callback(GLFWwindow *window, int width, int height) {
 
     // Update the FBO
     wc->mainSceneFBO->resize(width, height);
+    wc->frameSceneFBO->resize(width, height);
 }
 
 // Looks for the biggest monitor
@@ -311,7 +364,7 @@ void drawGUIDockspace() {
 }
 
 void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
-    MainScene &mainSceneFBO, shared_ptr<EventData> &evtData) {
+    MainScene &mainSceneFBO, MainScene &frameSceneFBO, shared_ptr<EventData> &evtData, std::string& datafilepath) {
 
     drawGUIDockspace();
 
@@ -342,7 +395,7 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::Text("File:");
 
         if (ImGui::Button("Open File")) {
-            // TODO: This should interact with the EventData object somehow, simply recalling init may not be clean
+            datafilepath=OpenFileDialog();
         }
 
         // TODO: Cache recent files and state?
@@ -370,9 +423,46 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
 
         ImGui::Text("Time Window (%.3f, %.3f)", evtData->getTimeWindow_L(), evtData->getTimeWindow_R());
         
-        ImGui::SliderFloat("Left", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
+        ImGui::SliderFloat("Left", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp()); // TODO format
         ImGui::SliderFloat("Right", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), ceil(evtData->getMaxTimestamp()));
-        ImGui::End();
+        ImGui::SliderFloat("##FrameLength", &evtData->getFrameLength(), 0, evtData->getMaxTimestamp()); 
+        ImGui::SameLine();
+        if (ImGui::Button("-")) { // TODO clean code
+            evtData->getTimeWindow_L() = glm::max(evtData->getTimeWindow_L() - evtData->getFrameLength(), evtData->getMinTimestamp());
+            evtData->getTimeWindow_R() = glm::max(evtData->getTimeWindow_R() - evtData->getFrameLength(), evtData->getMinTimestamp());
+        } 
+        ImGui::SameLine();
+        if (ImGui::Button("+")) {
+            evtData->getTimeWindow_L() = glm::min(evtData->getTimeWindow_L() + evtData->getFrameLength(), evtData->getMaxTimestamp());
+            evtData->getTimeWindow_R() = glm::min(evtData->getTimeWindow_R() + evtData->getFrameLength(), evtData->getMaxTimestamp());
+        }
+        ImGui::SameLine();
+        ImGui::Text("Frame Length (ms)");
+        ImGui::Separator();
+
+        ImGui::Text("Space Window");
+
+        ImGui::SliderFloat("Top", &evtData->getSpaceWindow().x, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y); 
+        ImGui::SliderFloat("RightS", &evtData->getSpaceWindow().y, evtData->getMin_XYZ().x, ceil(evtData->getMax_XYZ().x));
+        ImGui::SliderFloat("Bottom", &evtData->getSpaceWindow().z, evtData->getMin_XYZ().y, ceil(evtData->getMax_XYZ().y));
+        ImGui::SliderFloat("LeftS", &evtData->getSpaceWindow().w, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x); 
+
+        ImGui::Separator();
+
+        ImGui::Text("Processing options");
+        ImGui::Checkbox("Morlet Shutter", &evtData->getMorlet()); // Todo add h and f sliders; Fix time normalizations
+        ImGui::Checkbox("PCA", &evtData->getPCA());
+
+    ImGui::End();
+
+    ImGui::Begin("Frame");
+        ImGui::Text("Digital Coded Exposure"); 
+
+        // TODO ask Andrew about aspect ratio standards/preferences
+        image_sz = ImGui::GetContentRegionAvail();
+        final_sz = ImVec2(image_sz.x, image_sz.y); // fbo viewport is static ish
+        ImGui::Image((ImTextureID)frameSceneFBO.getColorTexture(), final_sz);
+    ImGui::End();
 }
 
 float randFloat() {
