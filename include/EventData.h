@@ -24,7 +24,7 @@ class EventData {
         EventData();
         ~EventData();
 
-        void initParticlesFromFile(const std::string &filename, size_t freq=10000); // TODO speedup and dynamic
+        void initParticlesFromFile(const std::string &filename, size_t point_freq=10000); // TODO speedup and dynamic
 
         void drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &prog, float particleScale);
         void draw(MatrixStack &MV, MatrixStack &P, Program &prog,

@@ -8,14 +8,14 @@
 // TODO ask about default -1
 EventData::EventData() : initTimestamp(0), lastTimestamp(0), timeWindow_L(-1.0f), timeWindow_R(-1.0f),
     min_XYZ(std::numeric_limits<float>::max()), max_XYZ(std::numeric_limits<float>::lowest()),
-    center(glm::vec3(0.0f)), mod_freq(1), frameLength(0), morlet(false), pca(false), gaussWidth(1),
+    center(glm::vec3(0.0f)), mod_freq(1), frameLength(0), morlet(false), pca(false),
     freq(1) {}
 EventData::~EventData() {}
 
-void EventData::initParticlesFromFile(const std::string &filename, size_t freq) {
+void EventData::initParticlesFromFile(const std::string &filename, size_t point_freq) {
     dv::io::MonoCameraRecording reader(filename);
     camera_resolution = glm::vec2(reader.getEventResolution().value().width, reader.getEventResolution().value().height);
-    mod_freq = freq;
+    mod_freq = point_freq;
 
     // TODO: Should just write a reset method using this and call it for sanity check
     size_t max_batchSz = 0;
@@ -223,9 +223,8 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors, glm::v
     // Only necessary if morlet activate
     float f = freq / 1000000 / diff_scale; 
     float h = (getTimeWindow_R() - getTimeWindow_L()) / 2; // Very rough full width at half maximum
-    float center = getTimeWindow_L() + h;
+    float center_t = getTimeWindow_L() + h;
 
-    float r_max = -1;
     glm::vec2 rolling_sum(0.0f, 0.0f);
     std::vector<float> total;
     for (size_t i = 0; i < particleBatches.size(); ++i) {
@@ -242,7 +241,7 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors, glm::v
                     total.push_back(x);
                     total.push_back(y);
 
-                    float weight = morlet ? contribution(t - center, f, h) * polarity : 0.15f; // TODO consider polarity?
+                    float weight = morlet ? contribution(t - center_t, f, h) * polarity : 0.15f; // TODO consider polarity?
                     total.push_back(weight);
 
                     rolling_sum.x += x;
