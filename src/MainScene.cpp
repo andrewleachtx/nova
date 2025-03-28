@@ -16,7 +16,7 @@ MainScene::~MainScene() {
     }
 }
 
-bool MainScene::initialize(int w, int h) {
+bool MainScene::initialize(int w, int h, bool frame) {
     width = w;
     height = h;
 
@@ -25,8 +25,16 @@ bool MainScene::initialize(int w, int h) {
 
     glGenTextures(1, &colorTexture);
     glBindTexture(GL_TEXTURE_2D, colorTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height,
-                 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+    if (frame) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height,
+            0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr); // Note: GL_R32F possible if color does not change
+    }
+    else {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height,
+                    0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    }
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,

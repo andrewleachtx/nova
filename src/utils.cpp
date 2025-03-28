@@ -48,6 +48,20 @@ Program genPhongProg(const string &resource_dir) {
     return prog;
 }
 
+Program genBasicProg(const string &resource_dir) {
+    Program prog = Program();
+    prog.setShaderNames(resource_dir + "basic_vsh.glsl", resource_dir + "basic_fsh.glsl");
+    prog.setVerbose(true);
+    prog.init();
+
+    prog.addAttribute("pos");
+    prog.addUniform("projection");
+
+    // prog.setVerbose(false);
+
+    return prog;
+}
+
 void sendToPhongShader(const Program& prog, const MatrixStack& P, const MatrixStack& MV, const vec3& lightPos, const vec3& lightCol, const BPMaterial& mat) {
     glUniformMatrix4fv(prog.getUniform("P"), 1, GL_FALSE, glm::value_ptr(P.topMatrix()));
     glUniformMatrix4fv(prog.getUniform("MV"), 1, GL_FALSE, glm::value_ptr(MV.topMatrix()));
@@ -182,6 +196,7 @@ void resize_callback(GLFWwindow *window, int width, int height) {
 
     // Update the FBO
     wc->mainSceneFBO->resize(width, height);
+    wc->frameSceneFBO->resize(width, height);
 }
 
 // Looks for the biggest monitor
@@ -311,7 +326,7 @@ void drawGUIDockspace() {
 }
 
 void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
-    MainScene &mainSceneFBO, shared_ptr<EventData> &evtData) {
+    MainScene &mainSceneFBO, MainScene &frameSceneFBO, shared_ptr<EventData> &evtData) {
 
     drawGUIDockspace();
 
@@ -370,9 +385,46 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
 
         ImGui::Text("Time Window (%.3f, %.3f)", evtData->getTimeWindow_L(), evtData->getTimeWindow_R());
         
-        ImGui::SliderFloat("Left", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
+        ImGui::SliderFloat("Left", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp()); // TODO format
         ImGui::SliderFloat("Right", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), ceil(evtData->getMaxTimestamp()));
-        ImGui::End();
+        ImGui::SliderFloat("##FrameLength", &evtData->getFrameLength(), 0, evtData->getMaxTimestamp()); 
+        ImGui::SameLine();
+        if (ImGui::Button("-")) { // TODO clean code
+            evtData->getTimeWindow_L() = glm::max(evtData->getTimeWindow_L() - evtData->getFrameLength(), evtData->getMinTimestamp());
+            evtData->getTimeWindow_R() = glm::max(evtData->getTimeWindow_R() - evtData->getFrameLength(), evtData->getMinTimestamp());
+        } 
+        ImGui::SameLine();
+        if (ImGui::Button("+")) {
+            evtData->getTimeWindow_L() = glm::min(evtData->getTimeWindow_L() + evtData->getFrameLength(), evtData->getMaxTimestamp());
+            evtData->getTimeWindow_R() = glm::min(evtData->getTimeWindow_R() + evtData->getFrameLength(), evtData->getMaxTimestamp());
+        }
+        ImGui::SameLine();
+        ImGui::Text("Frame Length (ms)");
+        ImGui::Separator();
+
+        ImGui::Text("Space Window");
+
+        ImGui::SliderFloat("Top", &evtData->getSpaceWindow().x, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y); 
+        ImGui::SliderFloat("RightS", &evtData->getSpaceWindow().y, evtData->getMin_XYZ().x, ceil(evtData->getMax_XYZ().x));
+        ImGui::SliderFloat("Bottom", &evtData->getSpaceWindow().z, evtData->getMin_XYZ().y, ceil(evtData->getMax_XYZ().y));
+        ImGui::SliderFloat("LeftS", &evtData->getSpaceWindow().w, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x); 
+
+        ImGui::Separator();
+
+        ImGui::Text("Processing options");
+        ImGui::Checkbox("Morlet Shutter", &evtData->getMorlet()); // Todo add h and f sliders; Fix time normalizations
+        ImGui::Checkbox("PCA", &evtData->getPCA());
+
+    ImGui::End();
+
+    ImGui::Begin("Frame");
+        ImGui::Text("Digital Coded Exposure"); 
+
+        // TODO ask Andrew about aspect ratio standards/preferences
+        image_sz = ImGui::GetContentRegionAvail();
+        final_sz = ImVec2(image_sz.x, image_sz.y); // fbo viewport is static ish
+        ImGui::Image((ImTextureID)frameSceneFBO.getColorTexture(), final_sz);
+    ImGui::End();
 }
 
 float randFloat() {
