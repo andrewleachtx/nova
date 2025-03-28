@@ -21,9 +21,11 @@ float g_fps, g_lastRenderTime(0.0f);
 string g_resourceDir, g_dataFilepath;
 
 MainScene g_mainSceneFBO;
+MainScene g_frameSceneFBO; // TODO maybe change class
 
 Mesh g_meshSphere, g_meshSquare, g_meshCube, g_meshWeirdSquare;
 Program g_progScene;
+Program g_progFrameScene;
 
 glm::vec3 g_lightPos, g_lightCol;
 BPMaterial g_lightMat;
@@ -68,7 +70,7 @@ static void init() {
             style.Colors[ImGuiCol_WindowBg].w = 1.0f;
         }
 
-        ImGui::StyleColorsDark();
+        ImGui::StyleColorsDark(); 
         ImGui_ImplGlfw_InitForOpenGL(g_window, true);
         ImGui_ImplOpenGL3_Init("#version 430");
 
@@ -79,6 +81,7 @@ static void init() {
 
     // Shader Programs //
         g_progScene = genPhongProg(g_resourceDir);
+        g_progFrameScene = genBasicProg(g_resourceDir); 
 
     // Load Shape(s) & Scene //
         g_meshSphere.loadMesh(g_resourceDir + "sphere.obj");
@@ -94,6 +97,7 @@ static void init() {
         int width, height;
         glfwGetFramebufferSize(g_window, &width, &height);
         g_mainSceneFBO.initialize(width, height);
+        g_frameSceneFBO.initialize(width, height, true); // TODO consider normalization
 
     GLSL::checkError();
 }
@@ -131,7 +135,7 @@ static void render() {
     g_camera.applyProjectionMatrix(P);
     g_camera.applyViewMatrix(MV);
     
-    // Draw //
+    // Draw Main Scene //
         g_eventData->draw(MV, P, g_progScene,
                           g_particleScale, g_focusedEvent,
                           g_lightPos, g_lightCol,
@@ -142,12 +146,34 @@ static void render() {
     MV.popMatrix();
     g_mainSceneFBO.unbind();
 
+    g_frameSceneFBO.bind();
+    glViewport(0, 0, width, height); // TODO change width and height
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glDisable(GL_DEPTH_TEST); // TODO necessary?
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO need depth bit?
+
+    // Draw Frame //
+        std::vector<glm::vec3> eigenvectors;
+        g_eventData->drawFrame(g_progFrameScene, eigenvectors); 
+            
+        if (g_eventData->getPCA()) { // TODO integrate into drawFrame
+            glBegin(GL_LINES);
+            glVertex3f(eigenvectors[0].x, eigenvectors[0].y, eigenvectors[0].z);
+            glVertex3f(eigenvectors[1].x, eigenvectors[1].y, eigenvectors[1].z);
+            glEnd();
+        }
+
+    g_frameSceneFBO.unbind();
+
     // Build ImGui Docking & Main Viewport //
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         
-        drawGUI(g_camera, g_fps, g_particleScale, g_isMainviewportHovered, g_mainSceneFBO, g_eventData, g_dataFilepath);
+        drawGUI(g_camera, g_fps, g_particleScale, g_isMainviewportHovered, g_mainSceneFBO, g_frameSceneFBO, g_eventData, g_dataFilepath);
+
     
     // Render ImGui //
         ImGui::Render();
@@ -193,7 +219,7 @@ int main(int argc, char** argv) {
     }
 
     // Placement above init() assumes parameters are initialized, and that wc has inf lifetime 
-    WindowContext wc = { &g_camera, &g_cursorVisible, g_keyToggles, &g_isMainviewportHovered, &g_mainSceneFBO };
+    WindowContext wc = { &g_camera, &g_cursorVisible, g_keyToggles, &g_isMainviewportHovered, &g_mainSceneFBO, &g_frameSceneFBO }; 
     glfwSetWindowUserPointer(g_window, &wc);
     glfwMakeContextCurrent(g_window);
 
