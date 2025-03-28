@@ -17,10 +17,47 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <Windows.h>
+#include <shobjidl.h>
+
 using std::cout, std::endl, std::cerr;
 using std::shared_ptr, std::make_shared;
 using std::vector, std::string;
 using glm::vec3;
+
+string OpenFileDialog() {
+    HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    if (FAILED(hr)) return "";
+
+    IFileOpenDialog* pFileOpen;
+    hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
+    if (FAILED(hr)) {
+        CoUninitialize();
+        return "";
+    }
+
+    hr = pFileOpen->Show(NULL);
+    if (SUCCEEDED(hr)) {
+        IShellItem* pItem;
+        hr = pFileOpen->GetResult(&pItem);
+        if (SUCCEEDED(hr)) {
+            PWSTR filePath;
+            hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &filePath);
+            if (SUCCEEDED(hr)) {
+                std::wstring ws(filePath);
+                string path(ws.begin(), ws.end());
+                CoTaskMemFree(filePath);
+                pItem->Release();
+                pFileOpen->Release();
+                CoUninitialize();
+                return path;
+            }
+        }
+    }
+    pFileOpen->Release();
+    CoUninitialize();
+    return "";
+}
 
 Program genPhongProg(const string &resource_dir) {
     Program prog = Program();
@@ -326,7 +363,7 @@ void drawGUIDockspace() {
 }
 
 void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
-    MainScene &mainSceneFBO, MainScene &frameSceneFBO, shared_ptr<EventData> &evtData) {
+    MainScene &mainSceneFBO, MainScene &frameSceneFBO, shared_ptr<EventData> &evtData, std::string& datafilepath) {
 
     drawGUIDockspace();
 
@@ -357,7 +394,7 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::Text("File:");
 
         if (ImGui::Button("Open File")) {
-            // TODO: This should interact with the EventData object somehow, simply recalling init may not be clean
+            datafilepath=OpenFileDialog();
         }
 
         // TODO: Cache recent files and state?
