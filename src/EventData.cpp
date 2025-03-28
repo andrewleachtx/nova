@@ -150,7 +150,7 @@ void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Progra
     mat_line.s = 10.0f;
     
     sendToPhongShader(prog, P, MV, glm::vec3(0.0f), color_line, mat_line);
-    glDrawArrays(GL_LINES, 0, line_posbuf.size() / 3);
+    glDrawArrays(GL_LINES, 0, (GLsizei)line_posbuf.size() / 3);
     
     MV.popMatrix();
     prog.unbind();
