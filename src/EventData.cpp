@@ -8,12 +8,14 @@
 // TODO ask about default -1
 EventData::EventData() : initTimestamp(0), lastTimestamp(0), timeWindow_L(-1.0f), timeWindow_R(-1.0f),
     min_XYZ(std::numeric_limits<float>::max()), max_XYZ(std::numeric_limits<float>::lowest()),
-    center(glm::vec3(0.0f)), mod_freq(1), frameLength(0), morlet(false), pca(false) {}
+    center(glm::vec3(0.0f)), mod_freq(1), frameLength(0), morlet(false), pca(false), gaussWidth(1),
+    freq(1) {}
 EventData::~EventData() {}
 
 void EventData::initParticlesFromFile(const std::string &filename, size_t freq) {
     dv::io::MonoCameraRecording reader(filename);
-    this->mod_freq = freq;
+    camera_resolution = glm::vec2(reader.getEventResolution().value().width, reader.getEventResolution().value().height);
+    mod_freq = freq;
 
     // TODO: Should just write a reset method using this and call it for sanity check
     size_t max_batchSz = 0;
@@ -30,7 +32,7 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t freq) 
         if (const auto events = reader.getNextEventBatch(); events.has_value()) {
             std::vector<glm::vec4> evtBatch;
             for (size_t i = 0; i < events.value().size(); i++) {
-                // if (i % freq != 0 && false) { continue; } // TODO speed up
+                // if (i % 32 != 0) { continue; } // TODO speed up
                 const auto &event = events.value()[i];
                 
                 if (particleBatches.empty() && evtBatch.empty()) {
@@ -59,7 +61,7 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t freq) 
         The center is of course the midpoint. We should store the longest component from the center
         to the planes formed by the box.center
     */
-    float diff_scale = 500.0f / static_cast<float>(lastTimestamp - initTimestamp);
+    diff_scale = 500.0f / static_cast<float>(lastTimestamp - initTimestamp);
 
     // Each particle is grouped by event s.t. particle[i] stores a vector of glm::vec3 with a normalized abs. timestamp
     for (size_t i = 0; i < particleBatches.size(); i++) {
@@ -76,7 +78,7 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t freq) 
     max_XYZ.z *= diff_scale;
     center = 0.5f * (min_XYZ + max_XYZ);
 
-    this->spaceWindow = glm::vec4(min_XYZ.y, max_XYZ.x, max_XYZ.y, min_XYZ.x);
+    spaceWindow = glm::vec4(min_XYZ.y, max_XYZ.x, max_XYZ.y, min_XYZ.x);
 
     printf("Loaded %zu event batches\n", particleBatches.size());
     printf("Biggest batch size: %zu\n", max_batchSz);
@@ -170,7 +172,7 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
     MV.pushMatrix();
         for (size_t i = 0; i < particleBatches.size(); i++) {
             for (size_t j = 0; j < particleSizes[i]; j++) {
-                if (j % this->mod_freq == 0) {
+                if (j % mod_freq == 0) {
 
                 MV.pushMatrix();
                 MV.translate(particleBatches[i][j]);
@@ -194,18 +196,14 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
     prog.unbind();
 }
 
-float contribution(float t, float center_t) {
-    float f = 125;
-    float h = 4 / (1 * f);
-    // printf("%f \n", h);
-    t = t - center_t / 2;
-    auto complex_result = std::exp(2.0f * std::complex<float>(0.0f, 1.0f) * std::acos(-1.0f) * f *  t) * 
-        (float) std::exp((-4.0f * std::log(2.0f) * std::pow(t, 2.0f)) / std::pow(h, 2.0f));
-    complex_result *= 0.1f; // TODO contribution
-    return std::real(complex_result) + std::imag(complex_result);
+// start 57, final max
+float contribution(float t, float f, float h) {
+    auto complex_result = std::exp(2.0f * std::complex<float>(0.0f, 1.0f) * std::acos(-1.0f) * f * t) * 
+        (float) std::exp(-4 * std::log(2) * std::pow(t, 2) / std::pow(h, 2));
+    return std::real(complex_result);
 }
 
-void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
+void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors, glm::vec2 viewport_resolution) {
     prog.bind();
 
     GLuint VBO, VAO;
@@ -215,13 +213,19 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
     glGenBuffers(1, &VBO); 
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
-    float min_x = this->min_XYZ.x;
-    float max_x = this->max_XYZ.x;
-    float min_y = this->min_XYZ.y;
-    float max_y = this->max_XYZ.y;
+    float min_x = min_XYZ.x;
+    float max_x = max_XYZ.x;
+    float min_y = min_XYZ.y;
+    float max_y = max_XYZ.y;
     glm::mat4 projection = glm::ortho(min_x, max_x, min_y, max_y);
     glUniformMatrix4fv(prog.getUniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
+    // Only necessary if morlet activate
+    float f = freq / 1000000 / diff_scale; 
+    float h = (getTimeWindow_R() - getTimeWindow_L()) / 2; // Very rough full width at half maximum
+    float center = getTimeWindow_L() + h;
+
+    float r_max = -1;
     glm::vec2 rolling_sum(0.0f, 0.0f);
     std::vector<float> total;
     for (size_t i = 0; i < particleBatches.size(); ++i) {
@@ -229,7 +233,7 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
             float x = particleBatches[i][j].x;
             float y = particleBatches[i][j].y;
             float t = particleBatches[i][j].z;
-            float polarity = particleBatches[i][j].w;
+            float polarity = particleBatches[i][j].w == 0 ? -1 : 1;
 
             if (t <= getTimeWindow_R() && t >= getTimeWindow_L()) {
 
@@ -238,7 +242,7 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
                     total.push_back(x);
                     total.push_back(y);
 
-                    float weight = morlet ? contribution(t, getTimeWindow_R() - getTimeWindow_L() * polarity) : 1.0f; 
+                    float weight = morlet ? contribution(t - center, f, h) * polarity : 0.15f; // TODO consider polarity?
                     total.push_back(weight);
 
                     rolling_sum.x += x;
@@ -252,26 +256,25 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
             }
         }
     }
-
     // Calculate covariance // TODO improve normalization
-    float mean_x = rolling_sum.x / max_x / total.size() / 2;
-    float mean_y = rolling_sum.y / max_y / total.size() / 2;
+    float mean_x = rolling_sum.x / total.size() / 3;
+    float mean_y = rolling_sum.y / total.size() / 3;
 
     float cov_x_y = 0;
     float cov_x_x = 0;
     float cov_y_y = 0;
-    for (size_t i = 0; i < total.size(); i += 2) {
+    for (size_t i = 0; i < total.size(); i += 3) {
         float x = total[i];
         float y = total[i + 1];
 
-        cov_x_y += (x / max_x - mean_x) * (y / max_y - mean_y);
-        cov_x_x += (x / max_x - mean_x) * (x / max_x - mean_x);
-        cov_y_y += (y / max_y - mean_y) * (y / max_y - mean_y);
+        cov_x_y += (x - mean_x) * (y - mean_y);
+        cov_x_x += (x - mean_x) * (x - mean_x);
+        cov_y_y += (y - mean_y) * (y - mean_y);
     }
 
-    cov_x_y /= (total.size() / 2 - 1);
-    cov_x_x /= (total.size() / 2 - 1);
-    cov_y_y /= (total.size() / 2 - 1);
+    cov_x_y /= (total.size() / 3 - 1);
+    cov_x_x /= (total.size() / 3 - 1);
+    cov_y_y /= (total.size() / 3 - 1);
 
     // Matrix
     float a = 1;
@@ -282,8 +285,8 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
     float eigen2 = (-b - std::sqrt(b*b - 4 * a * c)) / (2 * a);
 
     // Eigen vectors
-    eigenvectors.push_back(glm::vec3(eigen1 - cov_y_y, cov_x_y, 1));
-    eigenvectors.push_back(glm::vec3(eigen2 - cov_y_y, cov_x_y, 1));
+    eigenvectors.push_back(glm::normalize(glm::vec3(eigen1 - cov_y_y, cov_x_y, 1)));
+    eigenvectors.push_back(glm::normalize(glm::vec3(eigen2 - cov_y_y, cov_x_y, 1)));
 
     // Load data points
     glBufferData(GL_ARRAY_BUFFER, total.size() * sizeof(float), total.data(), GL_DYNAMIC_DRAW);
@@ -293,7 +296,9 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
 	glVertexAttribPointer(pos, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 	glEnableVertexAttribArray(pos);
 
-    glPointSize(1.0f); 
+    float aspectWidth = viewport_resolution.x / static_cast<float>(camera_resolution.x);
+    float aspectHeight = viewport_resolution.y / static_cast<float>(camera_resolution.y);
+    glPointSize(1.0f * glm::max(aspectHeight, aspectWidth));
     glDrawArrays(GL_POINTS, 0, total.size()); // Probably break up
 
 	// Disable and unbind

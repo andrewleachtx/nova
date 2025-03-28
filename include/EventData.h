@@ -32,7 +32,7 @@ class EventData {
             const glm::vec3 &lightPos, const glm::vec3 &lightColor,
             const BPMaterial &lightMat, const Mesh &meshSphere, 
             const Mesh &meshCube);
-        void drawFrame(Program &prog, std::vector<glm::vec3> &eigenvectors);
+        void drawFrame(Program &prog, std::vector<glm::vec3> &eigenvectors, glm::vec2 viewport_resolution);
 
         const glm::vec3 &getCenter() const { return center; }
         const glm::vec3 getMin_XYZ() const { return min_XYZ; } // TOOD maybe manipulate window instead
@@ -44,11 +44,13 @@ class EventData {
         float &getFrameLength() { return frameLength; }
         glm::vec4 &getSpaceWindow() { return spaceWindow; }
         bool &getMorlet() { return morlet; }
+        float &getFreq() { return freq; } 
         bool &getPCA() { return pca; }
 
-
-
     private:
+        glm::vec2 camera_resolution;
+        float diff_scale;
+
         std::vector< std::vector<glm::vec4> > particleBatches; // x, y, t, polarity
         size_t mod_freq;
 
@@ -65,6 +67,8 @@ class EventData {
         glm::vec4 spaceWindow; // x = top, y = right, z = bottom, w = left 
             
         bool morlet;
+        float freq;
+
         bool pca;
 
         // We can define a bounding box and thus center to rotate around

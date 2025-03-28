@@ -142,7 +142,7 @@ static void render() {
     g_mainSceneFBO.unbind();
 
     g_frameSceneFBO.bind();
-    glViewport(0, 0, width, height); // TODO change width and height
+    glViewport(0, 0, width, height); // real TODO change width and height to match RESOLUTION 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glDisable(GL_DEPTH_TEST); // TODO necessary?
     glEnable(GL_BLEND);
@@ -150,13 +150,14 @@ static void render() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO need depth bit?
 
     // Draw Frame //
+        glm::vec2 viewport_resolution(g_frameSceneFBO.getFBOwidth(), g_frameSceneFBO.getFBOheight());
         std::vector<glm::vec3> eigenvectors;
-        g_eventData->drawFrame(g_progFrameScene, eigenvectors); 
+        g_eventData->drawFrame(g_progFrameScene, eigenvectors, viewport_resolution); 
             
         if (g_eventData->getPCA()) { // TODO integrate into drawFrame
             glBegin(GL_LINES);
             glVertex3f(eigenvectors[0].x, eigenvectors[0].y, eigenvectors[0].z);
-            glVertex3f(eigenvectors[1].x, eigenvectors[1].y, eigenvectors[1].z);
+            // glVertex3f(eigenvectors[1].x, eigenvectors[1].y, eigenvectors[1].z);
             glEnd();
         }
 
