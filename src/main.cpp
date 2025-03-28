@@ -173,7 +173,6 @@ static void render() {
         ImGui::NewFrame();
         
         drawGUI(g_camera, g_fps, g_particleScale, g_isMainviewportHovered, g_mainSceneFBO, g_frameSceneFBO, g_eventData, g_dataFilepath);
-
     
     // Render ImGui //
         ImGui::Render();

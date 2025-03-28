@@ -179,6 +179,7 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 }
 
 // Mouse scroll
+// FIXME: Add callback to Camera to handle (smooth?) scrolling AND correct scroll pivot AND and avoid ImGui scroll override
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
     WindowContext* wc = static_cast<WindowContext*>(glfwGetWindowUserPointer(window));
 
@@ -186,7 +187,7 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
         return;
     }
 
-    // TODO: Add a function in the camera class to handle scrolling, also need to avoid ImGui scroll override
+    // TODO: Replace with Camera callback; see FIXME above
     wc->camera->translations.z -= 100.0f * (float)yoffset;
 }
 
