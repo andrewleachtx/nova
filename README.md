@@ -79,6 +79,8 @@ The `--triplet=x64-windows` will install these libraries to be used in your syst
 1. Run `git submodule update --init`
 
 ### Building
+You should create a `build` directory once everytime you make major changes, or at least once per minor changes, followed by repeated recompilation in `run.ps1`.
+
 `cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" -DCMAKE_BUILD_TYPE=Release` builds in release mode, which doesn't come with debugging symbols.
 
 # Running

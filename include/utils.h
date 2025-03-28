@@ -20,6 +20,7 @@ struct WindowContext {
     MainScene* mainSceneFBO;
     MainScene* frameSceneFBO;
 };
+std::string OpenFileDialog();
 
 Program genPhongProg(const std::string &resource_dir);
 void sendToPhongShader(const Program &prog, const MatrixStack &P, const MatrixStack &MV, const vec3 &lightPos, const vec3 &lightCol, const BPMaterial &mat);
@@ -40,7 +41,8 @@ bool genBiggestWindow(GLFWwindow *&window, const std::string &window_name="GLFW 
 void initImGuiStyle(ImGuiStyle &style);
 void drawGUIDockspace();
 void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
-    MainScene &mainSceneFBO, MainScene &frameScenceFBO, std::shared_ptr<EventData> &evtData);
+
+    MainScene &mainSceneFBO, MainScene &frameScenceFBO, std::shared_ptr<EventData> &evtData, std::string &datafilepath);
 
 float randFloat();
 glm::vec3 randXYZ();
