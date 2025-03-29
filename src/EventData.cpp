@@ -8,8 +8,8 @@
 // TODO ask about default -1
 EventData::EventData() : initTimestamp(0), lastTimestamp(0), timeWindow_L(-1.0f), timeWindow_R(-1.0f),
     min_XYZ(std::numeric_limits<float>::max()), max_XYZ(std::numeric_limits<float>::lowest()),
-    center(glm::vec3(0.0f)), mod_freq(1), frameLength(0), morlet(false), pca(false),
-    freq(1) {}
+    center(glm::vec3(0.0f)), mod_freq(1), framePeriod(0), morlet(false), pca(false),
+    freq(1), shutterWindow_L(-1.0f), shutterWindow_R(-1.0f), fps(1) {}
 EventData::~EventData() {}
 
 void EventData::initParticlesFromFile(const std::string &filename, size_t point_freq) {
@@ -234,7 +234,7 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors, glm::v
             float t = particleBatches[i][j].z;
             float polarity = particleBatches[i][j].w == 0 ? -1 : 1;
 
-            if (t <= getTimeWindow_R() && t >= getTimeWindow_L()) {
+            if (t >= getTimeWindow_L() + getShutterWindow_L() && t <= getTimeWindow_L() + getShutterWindow_R()) {
 
                 // x == top, y == right, z == bottom, w == left
                 if (x >= getSpaceWindow().w && x <= getSpaceWindow().y && y >= getSpaceWindow().x && y <= getSpaceWindow().z) {

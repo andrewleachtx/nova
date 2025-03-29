@@ -431,18 +431,18 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         
         dTimeWindow |= ImGui::SliderFloat("Initial Time", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp()); // TODO format
         dTimeWindow |= ImGui::SliderFloat("Final Time", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), ceil(evtData->getMaxTimestamp()));
-        ImGui::SliderFloat("##FramePeriod", &evtData->getFrameLength(), 0, evtData->getMaxTimestamp()); 
+        ImGui::SliderFloat("##FramePeriod", &evtData->getFramePeriod(), 0, evtData->getMaxTimestamp()); 
         ImGui::SameLine();
         if (ImGui::Button("-")) { // TODO clean code
             dTimeWindow = true;
-            evtData->getTimeWindow_L() = glm::max(evtData->getTimeWindow_L() - evtData->getFrameLength(), evtData->getMinTimestamp());
-            evtData->getTimeWindow_R() = glm::max(evtData->getTimeWindow_R() - evtData->getFrameLength(), evtData->getMinTimestamp());
+            evtData->getTimeWindow_L() = glm::max(evtData->getTimeWindow_L() - evtData->getFramePeriod(), evtData->getMinTimestamp());
+            evtData->getTimeWindow_R() = glm::max(evtData->getTimeWindow_R() - evtData->getFramePeriod(), evtData->getMinTimestamp());
         } 
         ImGui::SameLine();
         if (ImGui::Button("+")) {
             dTimeWindow = true;
-            evtData->getTimeWindow_L() = glm::min(evtData->getTimeWindow_L() + evtData->getFrameLength(), evtData->getMaxTimestamp());
-            evtData->getTimeWindow_R() = glm::min(evtData->getTimeWindow_R() + evtData->getFrameLength(), evtData->getMaxTimestamp());
+            evtData->getTimeWindow_L() = glm::min(evtData->getTimeWindow_L() + evtData->getFramePeriod(), evtData->getMaxTimestamp());
+            evtData->getTimeWindow_R() = glm::min(evtData->getTimeWindow_R() + evtData->getFramePeriod(), evtData->getMaxTimestamp());
         }
         ImGui::SameLine();
         ImGui::Text("Frame Period (ms)");
@@ -457,10 +457,20 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
 
         ImGui::Separator();
 
-        ImGui::Text("Processing options");        
+        ImGui::Text("Processing options");    
+        float frameLength = evtData->getTimeWindow_R() - evtData->getTimeWindow_L();
+        dProcessingOptions |= ImGui::SliderFloat("Shutter Initial", &evtData->getShutterWindow_L(), 0, frameLength); 
+        dProcessingOptions |= ImGui::SliderFloat("Shutter Final", &evtData->getShutterWindow_R(), 0, frameLength);   
+
+        dProcessingOptions |= ImGui::SliderFloat("FPS", &evtData->getFPS(), 0, 10);
+        if (ImGui::Button("Play")) {
+            evtData->isAutoUpdate() = true;
+        }
+
         dProcessingOptions |= ImGui::SliderFloat("Frequency", &evtData->getFreq(), 0.001, 5000); // TODO decide reasonable range
-        dProcessingOptions |= ImGui::Checkbox("Morlet Shutter", &evtData->getMorlet()); // TODO Fix time normalizations
+        dProcessingOptions |= ImGui::Checkbox("Morlet Shutter", &evtData->isMorlet()); // TODO Fix time normalizations
         dProcessingOptions |= ImGui::Checkbox("PCA", &evtData->getPCA());
+
 
     ImGui::End();
 

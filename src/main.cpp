@@ -17,7 +17,7 @@ Camera g_camera;
 bool g_cursorVisible(false);
 bool g_isMainviewportHovered(false);
 bool g_keyToggles[256] = {false};
-float g_fps, g_lastRenderTime(0.0f);
+float g_fps, g_lastRenderTime(0.0f), g_nextFrameRenderTime(0.0f);
 string g_resourceDir, g_dataFilepath;
 
 MainScene g_mainSceneFBO;
@@ -146,6 +146,28 @@ static void render() {
     MV.popMatrix();
     g_mainSceneFBO.unbind();
 
+    // Draw Frame //
+    if (g_eventData->isAutoUpdate() && t >= g_nextFrameRenderTime) {
+        if (g_nextFrameRenderTime == 0) { g_nextFrameRenderTime = t; }
+
+        float framePeriod = g_eventData->getFramePeriod();
+        float frameStart = g_eventData->getTimeWindow_L();
+        float frameEnd = g_eventData->getTimeWindow_R();
+        float max_time = g_eventData->getMaxTimestamp();
+
+        if (frameStart == frameEnd) {
+            g_eventData->isAutoUpdate() = false;
+            g_nextFrameRenderTime = 0;
+        }
+        else {
+            g_eventData->getTimeWindow_L() = glm::min(max_time, frameStart + framePeriod);
+            g_eventData->getTimeWindow_R() = glm::min(max_time, frameEnd + framePeriod);
+            g_frameSceneFBO.setDirtyBit(true); 
+
+            g_nextFrameRenderTime += 1 / g_eventData->getFPS();
+        }
+    }
+
     if (g_frameSceneFBO.getDirtyBit()) {
         g_frameSceneFBO.bind();
         glViewport(0, 0, width, height); 
@@ -155,7 +177,6 @@ static void render() {
         glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO need depth bit?
 
-        // Draw Frame //
             glm::vec2 viewport_resolution(g_frameSceneFBO.getFBOwidth(), g_frameSceneFBO.getFBOheight());
             std::vector<glm::vec3> eigenvectors;
             g_eventData->drawFrame(g_progFrameScene, eigenvectors, viewport_resolution); 

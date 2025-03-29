@@ -41,11 +41,15 @@ class EventData {
         const float &getMinTimestamp() const { return min_XYZ.z; }
         float &getTimeWindow_L() { return timeWindow_L; }
         float &getTimeWindow_R() { return timeWindow_R; }
-        float &getFrameLength() { return frameLength; }
+        float &getFramePeriod() { return framePeriod; }
         glm::vec4 &getSpaceWindow() { return spaceWindow; }
-        bool &getMorlet() { return morlet; }
+        bool &isMorlet() { return morlet; }
         float &getFreq() { return freq; } 
         bool &getPCA() { return pca; }
+        float &getShutterWindow_L() { return shutterWindow_L; }
+        float &getShutterWindow_R() { return shutterWindow_R; }
+        float &getFPS() { return fps; }
+        bool &isAutoUpdate() { return autoUpdate; }
 
     private:
         glm::vec2 camera_resolution;
@@ -62,14 +66,21 @@ class EventData {
 
         float timeWindow_L;
         float timeWindow_R;
-        float frameLength;
+        float framePeriod;
 
         glm::vec4 spaceWindow; // x = top, y = right, z = bottom, w = left 
             
+        // TODO encapsulate in frame specific class?
         bool morlet;
         float freq;
 
         bool pca;
+
+        float shutterWindow_L;
+        float shutterWindow_R;
+
+        float fps;
+        bool autoUpdate;
 
         // We can define a bounding box and thus center to rotate around
         glm::vec3 min_XYZ;
