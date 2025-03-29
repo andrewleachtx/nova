@@ -6,10 +6,9 @@
 #include <dv-processing/core/utils.hpp>
 
 // TODO ask about default -1
-EventData::EventData() : initTimestamp(0), lastTimestamp(0), timeWindow_L(-1.0f), timeWindow_R(-1.0f),
+EventData::EventData() : initTimestamp(0), lastTimestamp(0), timeWindow_L(0.0f), timeWindow_R(0.0f),
     min_XYZ(std::numeric_limits<float>::max()), max_XYZ(std::numeric_limits<float>::lowest()),
-    center(glm::vec3(0.0f)), mod_freq(1), framePeriod(0), morlet(false), pca(false),
-    freq(1), shutterWindow_L(-1.0f), shutterWindow_R(-1.0f), fps(1) {}
+    center(glm::vec3(0.0f)), mod_freq(1), shutterWindow_L(0.0f), shutterWindow_R(0.0f) {}
 EventData::~EventData() {}
 
 void EventData::initParticlesFromFile(const std::string &filename, size_t point_freq) {
@@ -203,7 +202,7 @@ float contribution(float t, float f, float h) {
     return std::real(complex_result);
 }
 
-void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors, glm::vec2 viewport_resolution) {
+void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors, glm::vec2 viewport_resolution, bool morlet, float freq) {
     prog.bind();
 
     GLuint VBO, VAO;
@@ -220,10 +219,13 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors, glm::v
     glm::mat4 projection = glm::ortho(min_x, max_x, min_y, max_y);
     glUniformMatrix4fv(prog.getUniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
+    float timeBound_L =  getTimeWindow_L() + getShutterWindow_L();
+    float timeBound_R = getTimeWindow_L() + getShutterWindow_R();
+
     // Only necessary if morlet activate
     float f = freq / 1000000 / diff_scale; 
-    float h = (getTimeWindow_R() - getTimeWindow_L()) / 2; // Very rough full width at half maximum
-    float center_t = getTimeWindow_L() + h;
+    float h = (timeBound_R - timeBound_L) / 2; // Very rough full width at half maximum
+    float center_t = timeBound_L + h;
 
     glm::vec2 rolling_sum(0.0f, 0.0f);
     std::vector<float> total;
@@ -234,14 +236,14 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors, glm::v
             float t = particleBatches[i][j].z;
             float polarity = particleBatches[i][j].w == 0 ? -1 : 1;
 
-            if (t >= getTimeWindow_L() + getShutterWindow_L() && t <= getTimeWindow_L() + getShutterWindow_R()) {
+            if (t >= timeBound_L && t <= timeBound_R) {
 
                 // x == top, y == right, z == bottom, w == left
                 if (x >= getSpaceWindow().w && x <= getSpaceWindow().y && y >= getSpaceWindow().x && y <= getSpaceWindow().z) {
                     total.push_back(x);
                     total.push_back(y);
 
-                    float weight = morlet ? contribution(t - center_t, f, h) * polarity : 0.15f; // TODO consider polarity?
+                    float weight = morlet ? contribution(t - center_t, f, h) * polarity * 0.15 : 0.15f; // TODO consider polarity?
                     total.push_back(weight);
 
                     rolling_sum.x += x;

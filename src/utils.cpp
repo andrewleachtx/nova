@@ -305,6 +305,11 @@ float getMaxFPS() {
     return max;
 }
 
+void clamp(float &val, float left, float right = -1) { // Consider changing to max/min
+    if (val < left) { val = left; }
+    if (val > right && right != -1) { val = right; }
+}
+
 void initImGuiStyle(ImGuiStyle &style) {
     ImVec4 color_purple = ImVec4(0.733f, 0.698f, 0.914f, 1.0f);
     ImVec4 color_purple_darker = ImVec4(0.5f, 0.45f, 0.7f, 1.0f);
@@ -364,7 +369,7 @@ void drawGUIDockspace() {
 }
 
 void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
-    MainScene &mainSceneFBO, MainScene &frameSceneFBO, shared_ptr<EventData> &evtData, std::string& datafilepath) {
+    MainScene &mainSceneFBO, FrameScene &frameSceneFBO, shared_ptr<EventData> &evtData, std::string& datafilepath) {
 
     drawGUIDockspace();
 
@@ -430,19 +435,19 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::Text("Time Window (%.3f, %.3f)", evtData->getTimeWindow_L(), evtData->getTimeWindow_R());
         
         dTimeWindow |= ImGui::SliderFloat("Initial Time", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp()); // TODO format
-        dTimeWindow |= ImGui::SliderFloat("Final Time", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), ceil(evtData->getMaxTimestamp()));
-        ImGui::SliderFloat("##FramePeriod", &evtData->getFramePeriod(), 0, evtData->getMaxTimestamp()); 
+        dTimeWindow |= ImGui::SliderFloat("Final Time", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
+        ImGui::SliderFloat("##FramePeriod", &frameSceneFBO.getFramePeriod(), 0, evtData->getMaxTimestamp()); 
         ImGui::SameLine();
         if (ImGui::Button("-")) { // TODO clean code
             dTimeWindow = true;
-            evtData->getTimeWindow_L() = glm::max(evtData->getTimeWindow_L() - evtData->getFramePeriod(), evtData->getMinTimestamp());
-            evtData->getTimeWindow_R() = glm::max(evtData->getTimeWindow_R() - evtData->getFramePeriod(), evtData->getMinTimestamp());
+            evtData->getTimeWindow_L() = glm::max(evtData->getTimeWindow_L() - frameSceneFBO.getFramePeriod(), evtData->getMinTimestamp());
+            evtData->getTimeWindow_R() = glm::max(evtData->getTimeWindow_R() - frameSceneFBO.getFramePeriod(), evtData->getMinTimestamp());
         } 
         ImGui::SameLine();
         if (ImGui::Button("+")) {
             dTimeWindow = true;
-            evtData->getTimeWindow_L() = glm::min(evtData->getTimeWindow_L() + evtData->getFramePeriod(), evtData->getMaxTimestamp());
-            evtData->getTimeWindow_R() = glm::min(evtData->getTimeWindow_R() + evtData->getFramePeriod(), evtData->getMaxTimestamp());
+            evtData->getTimeWindow_L() = glm::min(evtData->getTimeWindow_L() + frameSceneFBO.getFramePeriod(), evtData->getMaxTimestamp());
+            evtData->getTimeWindow_R() = glm::min(evtData->getTimeWindow_R() + frameSceneFBO.getFramePeriod(), evtData->getMaxTimestamp());
         }
         ImGui::SameLine();
         ImGui::Text("Frame Period (ms)");
@@ -451,8 +456,8 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::Text("Space Window");
 
         dSpaceWindow |= ImGui::SliderFloat("Top", &evtData->getSpaceWindow().x, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y); 
-        dSpaceWindow |= ImGui::SliderFloat("Right", &evtData->getSpaceWindow().y, evtData->getMin_XYZ().x, ceil(evtData->getMax_XYZ().x));
-        dSpaceWindow |= ImGui::SliderFloat("Bottom", &evtData->getSpaceWindow().z, evtData->getMin_XYZ().y, ceil(evtData->getMax_XYZ().y));
+        dSpaceWindow |= ImGui::SliderFloat("Right", &evtData->getSpaceWindow().y, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x);
+        dSpaceWindow |= ImGui::SliderFloat("Bottom", &evtData->getSpaceWindow().z, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y);
         dSpaceWindow |= ImGui::SliderFloat("Left", &evtData->getSpaceWindow().w, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x); 
 
         ImGui::Separator();
@@ -462,14 +467,15 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         dProcessingOptions |= ImGui::SliderFloat("Shutter Initial", &evtData->getShutterWindow_L(), 0, frameLength); 
         dProcessingOptions |= ImGui::SliderFloat("Shutter Final", &evtData->getShutterWindow_R(), 0, frameLength);   
 
-        dProcessingOptions |= ImGui::SliderFloat("FPS", &evtData->getFPS(), 0, 10);
-        if (ImGui::Button("Play")) {
-            evtData->isAutoUpdate() = true;
+        dProcessingOptions |= ImGui::SliderFloat("FPS", &frameSceneFBO.getFPS(), 0, 100); // TODO Potential issue with changing mid play (controlling nextRenderTime)
+        if (ImGui::Button("Play") && frameSceneFBO.isAutoUpdate() == false) {
+            frameSceneFBO.isAutoUpdate() = true;
+            frameSceneFBO.setLastRenderTime(glfwGetTime());
         }
 
-        dProcessingOptions |= ImGui::SliderFloat("Frequency", &evtData->getFreq(), 0.001, 5000); // TODO decide reasonable range
-        dProcessingOptions |= ImGui::Checkbox("Morlet Shutter", &evtData->isMorlet()); // TODO Fix time normalizations
-        dProcessingOptions |= ImGui::Checkbox("PCA", &evtData->getPCA());
+        dProcessingOptions |= ImGui::SliderFloat("Frequency", &frameSceneFBO.getFreq(), 0.001, 5000); // TODO decide reasonable range
+        dProcessingOptions |= ImGui::Checkbox("Morlet Shutter", &frameSceneFBO.isMorlet()); // TODO Fix time normalizations
+        dProcessingOptions |= ImGui::Checkbox("PCA", &frameSceneFBO.getPCA());
 
 
     ImGui::End();
@@ -484,6 +490,24 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
     ImGui::End();
 
     frameSceneFBO.setDirtyBit(dFile | dTimeWindow | dSpaceWindow | dProcessingOptions);
+
+    // correct out of bounds parameters // Could prevent input to begin with?
+    // Time parameters
+    clamp(evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
+    clamp(evtData->getTimeWindow_R(), evtData->getTimeWindow_L(), evtData->getMaxTimestamp());
+    clamp(evtData->getShutterWindow_L(), 0, evtData->getTimeWindow_R() - evtData->getTimeWindow_L());
+    clamp(evtData->getShutterWindow_R(), 0, evtData->getTimeWindow_R() - evtData->getTimeWindow_L());
+    
+    // Space parameters
+    clamp(evtData->getSpaceWindow().x, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y); // Consider clamping to opposing space window
+    clamp(evtData->getSpaceWindow().y, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x);
+    clamp(evtData->getSpaceWindow().z, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y);
+    clamp(evtData->getSpaceWindow().w, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x); 
+
+    // Other parameters
+    clamp(frameSceneFBO.getFramePeriod(), 0);
+    clamp(frameSceneFBO.getFPS(), 0);
+    clamp(frameSceneFBO.getFreq(), 0.01);
 }
 
 float randFloat() {

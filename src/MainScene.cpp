@@ -32,7 +32,7 @@ bool MainScene::initialize(int w, int h, bool frame) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height,
             0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr); // Note: GL_R32F possible if color does not change
     }
-    else {
+    else { // TODO ask if better to just pick higher resolution
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height,
                     0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     }

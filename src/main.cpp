@@ -17,11 +17,11 @@ Camera g_camera;
 bool g_cursorVisible(false);
 bool g_isMainviewportHovered(false);
 bool g_keyToggles[256] = {false};
-float g_fps, g_lastRenderTime(0.0f), g_nextFrameRenderTime(0.0f);
+float g_fps, g_lastRenderTime(0.0f);
 string g_resourceDir, g_dataFilepath;
 
 MainScene g_mainSceneFBO;
-MainScene g_frameSceneFBO;
+FrameScene g_frameSceneFBO;
 
 Mesh g_meshSphere, g_meshSquare, g_meshCube, g_meshWeirdSquare;
 Program g_progScene;
@@ -97,7 +97,7 @@ static void init() {
         int width, height;
         glfwGetFramebufferSize(g_window, &width, &height);
         g_mainSceneFBO.initialize(width, height);
-        g_frameSceneFBO.initialize(width, height, true); // TODO consider normalization
+        g_frameSceneFBO.initialize(width, height); // TODO consider GL_RGB32F
 
     GLSL::checkError();
 }
@@ -146,25 +146,23 @@ static void render() {
     MV.popMatrix();
     g_mainSceneFBO.unbind();
 
-    // Draw Frame //
-    if (g_eventData->isAutoUpdate() && t >= g_nextFrameRenderTime) {
-        if (g_nextFrameRenderTime == 0) { g_nextFrameRenderTime = t; }
+    // Draw Frame // 
+    if (g_frameSceneFBO.isAutoUpdate() && t - 1 / g_frameSceneFBO.getFPS() >= g_frameSceneFBO.getLastRenderTime()) {
 
-        float framePeriod = g_eventData->getFramePeriod();
+        float framePeriod = g_frameSceneFBO.getFramePeriod();
         float frameStart = g_eventData->getTimeWindow_L();
         float frameEnd = g_eventData->getTimeWindow_R();
         float max_time = g_eventData->getMaxTimestamp();
 
-        if (frameStart == frameEnd) {
-            g_eventData->isAutoUpdate() = false;
-            g_nextFrameRenderTime = 0;
+        if (frameStart == frameEnd) { // TODO consider breaking when right bound reaches end
+            g_frameSceneFBO.isAutoUpdate() = false;
         }
         else {
             g_eventData->getTimeWindow_L() = glm::min(max_time, frameStart + framePeriod);
             g_eventData->getTimeWindow_R() = glm::min(max_time, frameEnd + framePeriod);
             g_frameSceneFBO.setDirtyBit(true); 
 
-            g_nextFrameRenderTime += 1 / g_eventData->getFPS();
+            g_frameSceneFBO.setLastRenderTime(t);
         }
     }
 
@@ -179,9 +177,10 @@ static void render() {
 
             glm::vec2 viewport_resolution(g_frameSceneFBO.getFBOwidth(), g_frameSceneFBO.getFBOheight());
             std::vector<glm::vec3> eigenvectors;
-            g_eventData->drawFrame(g_progFrameScene, eigenvectors, viewport_resolution); 
+            g_eventData->drawFrame(g_progFrameScene, eigenvectors, viewport_resolution, 
+                g_frameSceneFBO.isMorlet(), g_frameSceneFBO.getFreq()); 
                 
-            if (g_eventData->getPCA()) { // TODO integrate into drawFrame
+            if (g_frameSceneFBO.getPCA()) { // TODO integrate into drawFrame
                 glBegin(GL_LINES);
                 glVertex3f(eigenvectors[0].x, eigenvectors[0].y, eigenvectors[0].z);
                 // glVertex3f(eigenvectors[1].x, eigenvectors[1].y, eigenvectors[1].z);
