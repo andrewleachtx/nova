@@ -2,7 +2,7 @@
 #include <iostream>
 #include <GL/glew.h>
 
-MainScene::MainScene() : fbo(0), colorTexture(0), depthRBO(0), width(0), height(0) {}
+MainScene::MainScene() : fbo(0), colorTexture(0), depthRBO(0), width(0), height(0), dirtyBit(false) {}
 
 MainScene::~MainScene() {
     if (fbo != 0) {
@@ -17,6 +17,8 @@ MainScene::~MainScene() {
 }
 
 bool MainScene::initialize(int w, int h, bool frame) {
+    dirtyBit = true;
+    
     width = w;
     height = h;
 

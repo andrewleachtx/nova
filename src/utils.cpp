@@ -368,6 +368,11 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
 
     drawGUIDockspace();
 
+    // Dirty bits
+    bool dFile = false;
+    bool dTimeWindow = false;
+    bool dSpaceWindow = false;
+    bool dProcessingOptions = false;
     ImGui::Begin("Main Viewport");
         const glm::vec3 &cam_pos = camera.pos;
         
@@ -395,6 +400,7 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::Text("File:");
 
         if (ImGui::Button("Open File")) {
+            dFile = true;
             datafilepath=OpenFileDialog();
         }
 
@@ -423,16 +429,18 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
 
         ImGui::Text("Time Window (%.3f, %.3f)", evtData->getTimeWindow_L(), evtData->getTimeWindow_R());
         
-        ImGui::SliderFloat("Initial Time", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp()); // TODO format
-        ImGui::SliderFloat("Final Time", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), ceil(evtData->getMaxTimestamp()));
+        dTimeWindow |= ImGui::SliderFloat("Initial Time", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp()); // TODO format
+        dTimeWindow |= ImGui::SliderFloat("Final Time", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), ceil(evtData->getMaxTimestamp()));
         ImGui::SliderFloat("##FramePeriod", &evtData->getFrameLength(), 0, evtData->getMaxTimestamp()); 
         ImGui::SameLine();
         if (ImGui::Button("-")) { // TODO clean code
+            dTimeWindow = true;
             evtData->getTimeWindow_L() = glm::max(evtData->getTimeWindow_L() - evtData->getFrameLength(), evtData->getMinTimestamp());
             evtData->getTimeWindow_R() = glm::max(evtData->getTimeWindow_R() - evtData->getFrameLength(), evtData->getMinTimestamp());
         } 
         ImGui::SameLine();
         if (ImGui::Button("+")) {
+            dTimeWindow = true;
             evtData->getTimeWindow_L() = glm::min(evtData->getTimeWindow_L() + evtData->getFrameLength(), evtData->getMaxTimestamp());
             evtData->getTimeWindow_R() = glm::min(evtData->getTimeWindow_R() + evtData->getFrameLength(), evtData->getMaxTimestamp());
         }
@@ -442,17 +450,17 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
 
         ImGui::Text("Space Window");
 
-        ImGui::SliderFloat("Top", &evtData->getSpaceWindow().x, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y); 
-        ImGui::SliderFloat("Right", &evtData->getSpaceWindow().y, evtData->getMin_XYZ().x, ceil(evtData->getMax_XYZ().x));
-        ImGui::SliderFloat("Bottom", &evtData->getSpaceWindow().z, evtData->getMin_XYZ().y, ceil(evtData->getMax_XYZ().y));
-        ImGui::SliderFloat("Left", &evtData->getSpaceWindow().w, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x); 
+        dSpaceWindow |= ImGui::SliderFloat("Top", &evtData->getSpaceWindow().x, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y); 
+        dSpaceWindow |= ImGui::SliderFloat("Right", &evtData->getSpaceWindow().y, evtData->getMin_XYZ().x, ceil(evtData->getMax_XYZ().x));
+        dSpaceWindow |= ImGui::SliderFloat("Bottom", &evtData->getSpaceWindow().z, evtData->getMin_XYZ().y, ceil(evtData->getMax_XYZ().y));
+        dSpaceWindow |= ImGui::SliderFloat("Left", &evtData->getSpaceWindow().w, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x); 
 
         ImGui::Separator();
 
         ImGui::Text("Processing options");        
-        ImGui::SliderFloat("Frequency", &evtData->getFreq(), 0.001, 5000); // TODO decide reasonable range
-        ImGui::Checkbox("Morlet Shutter", &evtData->getMorlet()); // TODO Fix time normalizations
-        ImGui::Checkbox("PCA", &evtData->getPCA());
+        dProcessingOptions |= ImGui::SliderFloat("Frequency", &evtData->getFreq(), 0.001, 5000); // TODO decide reasonable range
+        dProcessingOptions |= ImGui::Checkbox("Morlet Shutter", &evtData->getMorlet()); // TODO Fix time normalizations
+        dProcessingOptions |= ImGui::Checkbox("PCA", &evtData->getPCA());
 
     ImGui::End();
 
@@ -464,6 +472,8 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         final_sz = ImVec2(image_sz.x, image_sz.y); // fbo viewport is static ish
         ImGui::Image((ImTextureID)frameSceneFBO.getColorTexture(), final_sz);
     ImGui::End();
+
+    frameSceneFBO.setDirtyBit(dFile | dTimeWindow | dSpaceWindow | dProcessingOptions);
 }
 
 float randFloat() {

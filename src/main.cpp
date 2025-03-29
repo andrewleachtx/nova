@@ -21,7 +21,7 @@ float g_fps, g_lastRenderTime(0.0f);
 string g_resourceDir, g_dataFilepath;
 
 MainScene g_mainSceneFBO;
-MainScene g_frameSceneFBO; // TODO maybe change class
+MainScene g_frameSceneFBO;
 
 Mesh g_meshSphere, g_meshSquare, g_meshCube, g_meshWeirdSquare;
 Program g_progScene;
@@ -146,27 +146,30 @@ static void render() {
     MV.popMatrix();
     g_mainSceneFBO.unbind();
 
-    g_frameSceneFBO.bind();
-    glViewport(0, 0, width, height); // real TODO change width and height to match RESOLUTION 
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glDisable(GL_DEPTH_TEST); // TODO necessary?
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO need depth bit?
+    if (g_frameSceneFBO.getDirtyBit()) {
+        g_frameSceneFBO.bind();
+        glViewport(0, 0, width, height); 
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glDisable(GL_DEPTH_TEST); // TODO necessary?
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO need depth bit?
 
-    // Draw Frame //
-        glm::vec2 viewport_resolution(g_frameSceneFBO.getFBOwidth(), g_frameSceneFBO.getFBOheight());
-        std::vector<glm::vec3> eigenvectors;
-        g_eventData->drawFrame(g_progFrameScene, eigenvectors, viewport_resolution); 
-            
-        if (g_eventData->getPCA()) { // TODO integrate into drawFrame
-            glBegin(GL_LINES);
-            glVertex3f(eigenvectors[0].x, eigenvectors[0].y, eigenvectors[0].z);
-            // glVertex3f(eigenvectors[1].x, eigenvectors[1].y, eigenvectors[1].z);
-            glEnd();
-        }
+        // Draw Frame //
+            glm::vec2 viewport_resolution(g_frameSceneFBO.getFBOwidth(), g_frameSceneFBO.getFBOheight());
+            std::vector<glm::vec3> eigenvectors;
+            g_eventData->drawFrame(g_progFrameScene, eigenvectors, viewport_resolution); 
+                
+            if (g_eventData->getPCA()) { // TODO integrate into drawFrame
+                glBegin(GL_LINES);
+                glVertex3f(eigenvectors[0].x, eigenvectors[0].y, eigenvectors[0].z);
+                // glVertex3f(eigenvectors[1].x, eigenvectors[1].y, eigenvectors[1].z);
+                glEnd();
+            }
 
-    g_frameSceneFBO.unbind();
+        g_frameSceneFBO.unbind();
+        g_frameSceneFBO.setDirtyBit(false);
+    }
 
     // Build ImGui Docking & Main Viewport //
         ImGui_ImplOpenGL3_NewFrame();
