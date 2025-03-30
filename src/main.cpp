@@ -266,6 +266,16 @@ int main(int argc, char** argv) {
     glfwSetFramebufferSizeCallback(g_window, resize_callback);
 
     init();
+    int width, height;
+
+
+    const char *cmd = "ffmpeg -y -f rawvideo -pix_fmt rgb24 -s 1240x600 -r 30 -i - -c:v libx264 -pix_fmt yuv420p -crf 18 -vf vflip -preset veryfast output.mp4";   
+    FILE *ffmpeg = _popen(cmd, "wb");
+    if (!ffmpeg) {
+        cerr << "FFmpeg failed" << endl;
+        return -1;
+    }
+    vector<unsigned char> pixels(1240 * 600 * 3);
 
     while (!glfwWindowShouldClose(g_window)) {
         string oldfilepath = g_dataFilepath;
@@ -275,7 +285,13 @@ int main(int argc, char** argv) {
         }
         glfwSwapBuffers(g_window);
         glfwPollEvents();
+
+        // Output to video
+        glReadPixels(0, 0, 1240, 600, GL_RGB, GL_UNSIGNED_BYTE, pixels.data()); 
+
+        fwrite(pixels.data(), 1240 * 600 * 3, 1, ffmpeg);
     }
+    _pclose(ffmpeg);
 
     // Cleanup //
     ImGui_ImplOpenGL3_Shutdown();
