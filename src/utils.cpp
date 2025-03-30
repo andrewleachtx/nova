@@ -305,7 +305,7 @@ float getMaxFPS() {
     return max;
 }
 
-void clamp(float &val, float left, float right = -1) { // Consider changing to max/min
+static void clamp(float &val, float left, float right = -1) { // Consider changing to max/min
     if (val < left) { val = left; }
     if (val > right && right != -1) { val = right; }
 }
@@ -368,8 +368,19 @@ void drawGUIDockspace() {
     ImGui::End();
 }
 
+static void inputTextWrapper(std::string &name) {
+    const unsigned int max_length = 50; // TODO document range and decide if reasonable
+
+    char buf[max_length];
+    memset(buf, 0, max_length);
+    memcpy(buf, name.c_str(), name.size());
+    ImGui::InputText("Video Output Name", buf, max_length);
+    name = buf;
+}
+
 void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
-    MainScene &mainSceneFBO, FrameScene &frameSceneFBO, shared_ptr<EventData> &evtData, std::string& datafilepath) {
+    MainScene &mainSceneFBO, FrameScene &frameSceneFBO, shared_ptr<EventData> &evtData, std::string& datafilepath,
+    std::string &video_name, bool &recording) {
 
     drawGUIDockspace();
 
@@ -454,12 +465,10 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::Separator();
 
         ImGui::Text("Space Window");
-
         dSpaceWindow |= ImGui::SliderFloat("Top", &evtData->getSpaceWindow().x, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y); 
         dSpaceWindow |= ImGui::SliderFloat("Right", &evtData->getSpaceWindow().y, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x);
         dSpaceWindow |= ImGui::SliderFloat("Bottom", &evtData->getSpaceWindow().z, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y);
         dSpaceWindow |= ImGui::SliderFloat("Left", &evtData->getSpaceWindow().w, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x); 
-
         ImGui::Separator();
 
         ImGui::Text("Processing options");    
@@ -476,7 +485,16 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         dProcessingOptions |= ImGui::SliderFloat("Frequency", &frameSceneFBO.getFreq(), 0.001, 5000); // TODO decide reasonable range
         dProcessingOptions |= ImGui::Checkbox("Morlet Shutter", &frameSceneFBO.isMorlet()); // TODO Fix time normalizations
         dProcessingOptions |= ImGui::Checkbox("PCA", &frameSceneFBO.getPCA());
+        ImGui::Separator();
 
+        ImGui::Text("Video options"); // TODO add documentation
+        inputTextWrapper(video_name); // TODO consider including library to allow inputting string as parameter
+        if (ImGui::Button("Start Record")) {
+            recording = true;
+        }
+        if (ImGui::Button("Stop Record")) {
+            recording = false;
+        }
 
     ImGui::End();
 

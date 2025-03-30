@@ -11,6 +11,18 @@ using std::vector, std::string, std::make_shared, std::shared_ptr, std::pair, st
 using std::stoi, std::stoul, std::min, std::max, std::numeric_limits, std::abs;
 using namespace std;
 
+// Macros
+#ifdef _WIN32
+    #define popen_macro _popen
+    #define pclose_macro _pclose
+#else
+    #define popen_macro popen
+    #define pclose_macro pclose
+#endif
+
+// Constants
+const string cmd_format{"ffmpeg -y -f rawvideo -pix_fmt rgb24 -s %ux%u -i - -c:v libx264 -pix_fmt yuv420p -vf vflip -r 30 -preset veryfast %s.mp4"}; // TODO make background process?
+
 // We can pass in a user pointer to callback functions - shouldn't require an updater; vars have inf lifespan
 GLFWwindow *g_window;
 Camera g_camera;
@@ -22,6 +34,12 @@ string g_resourceDir, g_dataFilepath;
 
 MainScene g_mainSceneFBO;
 FrameScene g_frameSceneFBO;
+
+bool recording;
+string video_name;
+GLuint vid_width, vid_height;
+FILE *ffmpeg;
+vector<unsigned char> pixels;
 
 Mesh g_meshSphere, g_meshSquare, g_meshCube, g_meshWeirdSquare;
 Program g_progScene;
@@ -196,7 +214,8 @@ static void render() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         
-        drawGUI(g_camera, g_fps, g_particleScale, g_isMainviewportHovered, g_mainSceneFBO, g_frameSceneFBO, g_eventData, g_dataFilepath);
+        drawGUI(g_camera, g_fps, g_particleScale, g_isMainviewportHovered, g_mainSceneFBO, 
+            g_frameSceneFBO, g_eventData, g_dataFilepath, video_name, recording);
     
     // Render ImGui //
         ImGui::Render();
@@ -211,6 +230,34 @@ static void render() {
         }
 
     GLSL::checkError(GET_FILE_LINE);
+}
+
+static void video_output() {
+        if (recording) {
+
+            if (ffmpeg == nullptr) { // Check if beginning recording
+                vid_width = g_mainSceneFBO.getFBOwidth();
+                vid_height = g_mainSceneFBO.getFBOheight();
+
+                unsigned int cmd_size = cmd_format.size() + std::to_string(vid_width).size() + 
+                    std::to_string(vid_height).size() + video_name.size() - 6; // -6 accounts for each %_
+                char *cmd = new char[cmd_size]; 
+                sprintf(cmd, cmd_format.c_str(), vid_width, vid_height, video_name.c_str());
+                ffmpeg = popen_macro(cmd, "wb");
+                if (!ffmpeg) { cerr << "ffmpeg error" << endl; } // TODO add error handling?
+
+                delete[] cmd;
+                pixels.resize(vid_width * vid_height * 3);
+            }
+
+            glReadPixels(0, 0, vid_width, vid_height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data()); 
+            fwrite(pixels.data(), vid_width * vid_height * 3, 1, ffmpeg);
+        }
+        else if (ffmpeg != nullptr) { // Check if recording stopped
+            pclose_macro(ffmpeg);
+            ffmpeg = nullptr;
+        }
+
 }
 
 int main(int argc, char** argv) {
@@ -266,17 +313,7 @@ int main(int argc, char** argv) {
     glfwSetFramebufferSizeCallback(g_window, resize_callback);
 
     init();
-    int width, height;
-
-
-    const char *cmd = "ffmpeg -y -f rawvideo -pix_fmt rgb24 -s 1240x600 -r 30 -i - -c:v libx264 -pix_fmt yuv420p -crf 18 -vf vflip -preset veryfast output.mp4";   
-    FILE *ffmpeg = _popen(cmd, "wb");
-    if (!ffmpeg) {
-        cerr << "FFmpeg failed" << endl;
-        return -1;
-    }
-    vector<unsigned char> pixels(1240 * 600 * 3);
-
+    
     while (!glfwWindowShouldClose(g_window)) {
         string oldfilepath = g_dataFilepath;
         render();
@@ -286,12 +323,8 @@ int main(int argc, char** argv) {
         glfwSwapBuffers(g_window);
         glfwPollEvents();
 
-        // Output to video
-        glReadPixels(0, 0, 1240, 600, GL_RGB, GL_UNSIGNED_BYTE, pixels.data()); 
-
-        fwrite(pixels.data(), 1240 * 600 * 3, 1, ffmpeg);
+        video_output();
     }
-    _pclose(ffmpeg);
 
     // Cleanup //
     ImGui_ImplOpenGL3_Shutdown();

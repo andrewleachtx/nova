@@ -22,7 +22,7 @@ public:
     float &getFPS() { return fps; }
     float &getFramePeriod() { return framePeriod; }
 
-    float getLastRenderTime() { return lastRenderTime; } 
+    float getLastRenderTime() const { return lastRenderTime; } 
     void setLastRenderTime(float x) { lastRenderTime = x; } 
 
 

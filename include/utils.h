@@ -41,7 +41,8 @@ bool genBiggestWindow(GLFWwindow *&window, const std::string &window_name="GLFW 
 void initImGuiStyle(ImGuiStyle &style);
 void drawGUIDockspace();
 void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
-    MainScene &mainSceneFBO, FrameScene &frameScenceFBO, std::shared_ptr<EventData> &evtData, std::string &datafilepath);
+    MainScene &mainSceneFBO, FrameScene &frameScenceFBO, std::shared_ptr<EventData> &evtData, std::string &datafilepath, 
+    std::string &video_name, bool &recording);
 
 float randFloat();
 glm::vec3 randXYZ();
