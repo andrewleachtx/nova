@@ -40,6 +40,7 @@
 #include "EventData.h"
 #include "MainScene.h"
 #include "frameScene.h"
+#include "ContributionFunc.h"
 
 // UTILS //
 #include "utils.h"

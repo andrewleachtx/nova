@@ -21,7 +21,7 @@ using namespace std;
 #endif
 
 // Constants
-const string cmd_format{"ffmpeg -y -f rawvideo -pix_fmt rgb24 -s %ux%u -i - -c:v libx264 -pix_fmt yuv420p -vf vflip -r 30 -preset veryfast %s.mp4"}; // TODO make background process?
+const string cmd_format{"ffmpeg -y -f rawvideo -pix_fmt rgb24 -s %ux%u -i - -c:v libx264 -pix_fmt yuv420p -vf \"pad=ceil(iw/2)*2:ceil(ih/2)*2, vflip\" -r 30 -preset veryfast %s.mp4"}; // TODO make background process?
 
 // We can pass in a user pointer to callback functions - shouldn't require an updater; vars have inf lifespan
 GLFWwindow *g_window;
@@ -194,17 +194,9 @@ static void render() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO need depth bit?
 
             glm::vec2 viewport_resolution(g_frameSceneFBO.getFBOwidth(), g_frameSceneFBO.getFBOheight());
-            std::vector<glm::vec3> eigenvectors;
-            g_eventData->drawFrame(g_progFrameScene, eigenvectors, viewport_resolution, 
-                g_frameSceneFBO.isMorlet(), g_frameSceneFBO.getFreq()); 
+            g_eventData->drawFrame(g_progFrameScene, viewport_resolution, 
+                g_frameSceneFBO.isMorlet(), g_frameSceneFBO.getFreq(), g_frameSceneFBO.getPCA()); 
                 
-            if (g_frameSceneFBO.getPCA()) { // TODO integrate into drawFrame
-                glBegin(GL_LINES);
-                glVertex3f(eigenvectors[0].x, eigenvectors[0].y, eigenvectors[0].z);
-                // glVertex3f(eigenvectors[1].x, eigenvectors[1].y, eigenvectors[1].z);
-                glEnd();
-            }
-
         g_frameSceneFBO.unbind();
         g_frameSceneFBO.setDirtyBit(false);
     }
@@ -233,30 +225,32 @@ static void render() {
 }
 
 static void video_output() {
-        if (recording) {
+    if (recording) {
 
-            if (ffmpeg == nullptr) { // Check if beginning recording
-                vid_width = g_mainSceneFBO.getFBOwidth();
-                vid_height = g_mainSceneFBO.getFBOheight();
+        if (ffmpeg == nullptr) { // Check if beginning recording
+            vid_width = g_mainSceneFBO.getFBOwidth();
+            vid_height = g_mainSceneFBO.getFBOheight();
 
-                unsigned int cmd_size = cmd_format.size() + std::to_string(vid_width).size() + 
-                    std::to_string(vid_height).size() + video_name.size() - 6; // -6 accounts for each %_
-                char *cmd = new char[cmd_size]; 
-                sprintf(cmd, cmd_format.c_str(), vid_width, vid_height, video_name.c_str());
-                ffmpeg = popen_macro(cmd, "wb");
-                if (!ffmpeg) { cerr << "ffmpeg error" << endl; } // TODO add error handling?
+            // Dynamically construct command
+            unsigned int cmd_size = cmd_format.size() + std::to_string(vid_width).size() + 
+                std::to_string(vid_height).size() + video_name.size() - 6; // -6 accounts for each %_
+            char *cmd = new char[cmd_size]; 
+            sprintf(cmd, cmd_format.c_str(), vid_width, vid_height, video_name.c_str());
 
-                delete[] cmd;
-                pixels.resize(vid_width * vid_height * 3);
-            }
+            ffmpeg = popen_macro(cmd, "wb");
+            if (!ffmpeg) { cerr << "ffmpeg error" << endl; } // TODO add error handling?
 
-            glReadPixels(0, 0, vid_width, vid_height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data()); 
-            fwrite(pixels.data(), vid_width * vid_height * 3, 1, ffmpeg);
+            delete[] cmd;
+            pixels.resize(vid_width * vid_height * 3);
         }
-        else if (ffmpeg != nullptr) { // Check if recording stopped
-            pclose_macro(ffmpeg);
-            ffmpeg = nullptr;
-        }
+
+        glReadPixels(0, 0, vid_width, vid_height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data()); 
+        fwrite(pixels.data(), vid_width * vid_height * 3, 1, ffmpeg);
+    }
+    else if (ffmpeg != nullptr) { // Check if recording stopped
+        pclose_macro(ffmpeg);
+        ffmpeg = nullptr;
+    }
 
 }
 

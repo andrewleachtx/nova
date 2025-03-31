@@ -32,7 +32,8 @@ class EventData {
             const glm::vec3 &lightPos, const glm::vec3 &lightColor,
             const BPMaterial &lightMat, const Mesh &meshSphere, 
             const Mesh &meshCube);
-        void drawFrame(Program &prog, std::vector<glm::vec3> &eigenvectors, glm::vec2 viewport_resolution, bool morlet, float freq);
+        void drawFrame(Program &prog, glm::vec2 viewport_resolution, 
+            bool morlet, float freq, bool pca);
 
         const glm::vec3 &getCenter() const { return center; }
         const glm::vec3 getMin_XYZ() const { return min_XYZ; } // TODO maybe manipulate window instead

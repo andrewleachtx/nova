@@ -476,13 +476,13 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         dProcessingOptions |= ImGui::SliderFloat("Shutter Initial", &evtData->getShutterWindow_L(), 0, frameLength); 
         dProcessingOptions |= ImGui::SliderFloat("Shutter Final", &evtData->getShutterWindow_R(), 0, frameLength);   
 
-        dProcessingOptions |= ImGui::SliderFloat("FPS", &frameSceneFBO.getFPS(), 0, 100); // TODO Potential issue with changing mid play (controlling nextRenderTime)
+        dProcessingOptions |= ImGui::SliderFloat("FPS", &frameSceneFBO.getFPS(), 0, 100);
         if (ImGui::Button("Play") && frameSceneFBO.isAutoUpdate() == false) {
             frameSceneFBO.isAutoUpdate() = true;
             frameSceneFBO.setLastRenderTime(glfwGetTime());
         }
 
-        dProcessingOptions |= ImGui::SliderFloat("Frequency", &frameSceneFBO.getFreq(), 0.001, 5000); // TODO decide reasonable range
+        dProcessingOptions |= ImGui::SliderFloat("Frequency", &frameSceneFBO.getFreq(), 0.001f, 5000); // TODO decide reasonable range
         dProcessingOptions |= ImGui::Checkbox("Morlet Shutter", &frameSceneFBO.isMorlet()); // TODO Fix time normalizations
         dProcessingOptions |= ImGui::Checkbox("PCA", &frameSceneFBO.getPCA());
         ImGui::Separator();
@@ -525,7 +525,7 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
     // Other parameters
     clamp(frameSceneFBO.getFramePeriod(), 0);
     clamp(frameSceneFBO.getFPS(), 0);
-    clamp(frameSceneFBO.getFreq(), 0.01);
+    clamp(frameSceneFBO.getFreq(), 0.01f);
 }
 
 float randFloat() {
