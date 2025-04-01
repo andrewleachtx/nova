@@ -305,6 +305,11 @@ float getMaxFPS() {
     return max;
 }
 
+static void clamp(float &val, float left, float right = -1) { // Consider changing to max/min
+    if (val < left) { val = left; }
+    if (val > right && right != -1) { val = right; }
+}
+
 void initImGuiStyle(ImGuiStyle &style) {
     ImVec4 color_purple = ImVec4(0.733f, 0.698f, 0.914f, 1.0f);
     ImVec4 color_purple_darker = ImVec4(0.5f, 0.45f, 0.7f, 1.0f);
@@ -363,11 +368,27 @@ void drawGUIDockspace() {
     ImGui::End();
 }
 
+static void inputTextWrapper(std::string &name) {
+    const unsigned int max_length = 50; // TODO document range and decide if reasonable
+
+    char buf[max_length];
+    memset(buf, 0, max_length);
+    memcpy(buf, name.c_str(), name.size());
+    ImGui::InputText("Video Output Name", buf, max_length);
+    name = buf;
+}
+
 void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
-    MainScene &mainSceneFBO, MainScene &frameSceneFBO, shared_ptr<EventData> &evtData, std::string& datafilepath) {
+    MainScene &mainSceneFBO, FrameScene &frameSceneFBO, shared_ptr<EventData> &evtData, std::string& datafilepath,
+    std::string &video_name, bool &recording) {
 
     drawGUIDockspace();
 
+    // Dirty bits
+    bool dFile = false;
+    bool dTimeWindow = false;
+    bool dSpaceWindow = false;
+    bool dProcessingOptions = false;
     ImGui::Begin("Main Viewport");
         const glm::vec3 &cam_pos = camera.pos;
         
@@ -395,6 +416,7 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::Text("File:");
 
         if (ImGui::Button("Open File")) {
+            dFile = true;
             datafilepath=OpenFileDialog();
         }
 
@@ -423,35 +445,56 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
 
         ImGui::Text("Time Window (%.3f, %.3f)", evtData->getTimeWindow_L(), evtData->getTimeWindow_R());
         
-        ImGui::SliderFloat("Left", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp()); // TODO format
-        ImGui::SliderFloat("Right", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), ceil(evtData->getMaxTimestamp()));
-        ImGui::SliderFloat("##FrameLength", &evtData->getFrameLength(), 0, evtData->getMaxTimestamp()); 
+        dTimeWindow |= ImGui::SliderFloat("Initial Time", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp()); // TODO format
+        dTimeWindow |= ImGui::SliderFloat("Final Time", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
+        ImGui::SliderFloat("##FramePeriod", &frameSceneFBO.getFramePeriod(), 0, evtData->getMaxTimestamp()); 
         ImGui::SameLine();
         if (ImGui::Button("-")) { // TODO clean code
-            evtData->getTimeWindow_L() = glm::max(evtData->getTimeWindow_L() - evtData->getFrameLength(), evtData->getMinTimestamp());
-            evtData->getTimeWindow_R() = glm::max(evtData->getTimeWindow_R() - evtData->getFrameLength(), evtData->getMinTimestamp());
+            dTimeWindow = true;
+            evtData->getTimeWindow_L() = glm::max(evtData->getTimeWindow_L() - frameSceneFBO.getFramePeriod(), evtData->getMinTimestamp());
+            evtData->getTimeWindow_R() = glm::max(evtData->getTimeWindow_R() - frameSceneFBO.getFramePeriod(), evtData->getMinTimestamp());
         } 
         ImGui::SameLine();
         if (ImGui::Button("+")) {
-            evtData->getTimeWindow_L() = glm::min(evtData->getTimeWindow_L() + evtData->getFrameLength(), evtData->getMaxTimestamp());
-            evtData->getTimeWindow_R() = glm::min(evtData->getTimeWindow_R() + evtData->getFrameLength(), evtData->getMaxTimestamp());
+            dTimeWindow = true;
+            evtData->getTimeWindow_L() = glm::min(evtData->getTimeWindow_L() + frameSceneFBO.getFramePeriod(), evtData->getMaxTimestamp());
+            evtData->getTimeWindow_R() = glm::min(evtData->getTimeWindow_R() + frameSceneFBO.getFramePeriod(), evtData->getMaxTimestamp());
         }
         ImGui::SameLine();
-        ImGui::Text("Frame Length (ms)");
+        ImGui::Text("Frame Period (ms)");
         ImGui::Separator();
 
         ImGui::Text("Space Window");
-
-        ImGui::SliderFloat("Top", &evtData->getSpaceWindow().x, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y); 
-        ImGui::SliderFloat("RightS", &evtData->getSpaceWindow().y, evtData->getMin_XYZ().x, ceil(evtData->getMax_XYZ().x));
-        ImGui::SliderFloat("Bottom", &evtData->getSpaceWindow().z, evtData->getMin_XYZ().y, ceil(evtData->getMax_XYZ().y));
-        ImGui::SliderFloat("LeftS", &evtData->getSpaceWindow().w, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x); 
-
+        dSpaceWindow |= ImGui::SliderFloat("Top", &evtData->getSpaceWindow().x, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y); 
+        dSpaceWindow |= ImGui::SliderFloat("Right", &evtData->getSpaceWindow().y, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x);
+        dSpaceWindow |= ImGui::SliderFloat("Bottom", &evtData->getSpaceWindow().z, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y);
+        dSpaceWindow |= ImGui::SliderFloat("Left", &evtData->getSpaceWindow().w, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x); 
         ImGui::Separator();
 
-        ImGui::Text("Processing options");
-        ImGui::Checkbox("Morlet Shutter", &evtData->getMorlet()); // Todo add h and f sliders; Fix time normalizations
-        ImGui::Checkbox("PCA", &evtData->getPCA());
+        ImGui::Text("Processing options");    
+        float frameLength = evtData->getTimeWindow_R() - evtData->getTimeWindow_L();
+        dProcessingOptions |= ImGui::SliderFloat("Shutter Initial", &evtData->getShutterWindow_L(), 0, frameLength); 
+        dProcessingOptions |= ImGui::SliderFloat("Shutter Final", &evtData->getShutterWindow_R(), 0, frameLength);   
+
+        dProcessingOptions |= ImGui::SliderFloat("FPS", &frameSceneFBO.getFPS(), 0, 100);
+        if (ImGui::Button("Play") && frameSceneFBO.isAutoUpdate() == false) {
+            frameSceneFBO.isAutoUpdate() = true;
+            frameSceneFBO.setLastRenderTime(glfwGetTime());
+        }
+
+        dProcessingOptions |= ImGui::SliderFloat("Frequency", &frameSceneFBO.getFreq(), 0.001f, 5000); // TODO decide reasonable range
+        dProcessingOptions |= ImGui::Checkbox("Morlet Shutter", &frameSceneFBO.isMorlet()); // TODO Fix time normalizations
+        dProcessingOptions |= ImGui::Checkbox("PCA", &frameSceneFBO.getPCA());
+        ImGui::Separator();
+
+        ImGui::Text("Video options"); // TODO add documentation
+        inputTextWrapper(video_name); // TODO consider including library to allow inputting string as parameter
+        if (ImGui::Button("Start Record")) {
+            recording = true;
+        }
+        if (ImGui::Button("Stop Record")) {
+            recording = false;
+        }
 
     ImGui::End();
 
@@ -463,6 +506,26 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         final_sz = ImVec2(image_sz.x, image_sz.y); // fbo viewport is static ish
         ImGui::Image((ImTextureID)frameSceneFBO.getColorTexture(), final_sz);
     ImGui::End();
+
+    frameSceneFBO.setDirtyBit(dFile | dTimeWindow | dSpaceWindow | dProcessingOptions);
+
+    // correct out of bounds parameters // Could prevent input to begin with?
+    // Time parameters
+    clamp(evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
+    clamp(evtData->getTimeWindow_R(), evtData->getTimeWindow_L(), evtData->getMaxTimestamp());
+    clamp(evtData->getShutterWindow_L(), 0, evtData->getTimeWindow_R() - evtData->getTimeWindow_L());
+    clamp(evtData->getShutterWindow_R(), 0, evtData->getTimeWindow_R() - evtData->getTimeWindow_L());
+    
+    // Space parameters
+    clamp(evtData->getSpaceWindow().x, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y); // Consider clamping to opposing space window
+    clamp(evtData->getSpaceWindow().y, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x);
+    clamp(evtData->getSpaceWindow().z, evtData->getMin_XYZ().y, evtData->getMax_XYZ().y);
+    clamp(evtData->getSpaceWindow().w, evtData->getMin_XYZ().x, evtData->getMax_XYZ().x); 
+
+    // Other parameters
+    clamp(frameSceneFBO.getFramePeriod(), 0);
+    clamp(frameSceneFBO.getFPS(), 0);
+    clamp(frameSceneFBO.getFreq(), 0.01f);
 }
 
 float randFloat() {

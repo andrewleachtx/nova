@@ -6,14 +6,15 @@
 #include <dv-processing/core/utils.hpp>
 
 // TODO ask about default -1
-EventData::EventData() : initTimestamp(0), lastTimestamp(0), timeWindow_L(-1.0f), timeWindow_R(-1.0f),
+EventData::EventData() : initTimestamp(0), lastTimestamp(0), timeWindow_L(0.0f), timeWindow_R(0.0f),
     min_XYZ(std::numeric_limits<float>::max()), max_XYZ(std::numeric_limits<float>::lowest()),
-    center(glm::vec3(0.0f)), mod_freq(1), frameLength(0), morlet(false), pca(false) {}
+    center(glm::vec3(0.0f)), mod_freq(1), shutterWindow_L(0.0f), shutterWindow_R(0.0f) {}
 EventData::~EventData() {}
 
-void EventData::initParticlesFromFile(const std::string &filename, size_t freq) {
+void EventData::initParticlesFromFile(const std::string &filename, size_t point_freq) {
     dv::io::MonoCameraRecording reader(filename);
-    this->mod_freq = freq;
+    camera_resolution = glm::vec2(reader.getEventResolution().value().width, reader.getEventResolution().value().height);
+    mod_freq = point_freq;
 
     // TODO: Should just write a reset method using this and call it for sanity check
     size_t max_batchSz = 0;
@@ -30,7 +31,7 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t freq) 
         if (const auto events = reader.getNextEventBatch(); events.has_value()) {
             std::vector<glm::vec4> evtBatch;
             for (size_t i = 0; i < events.value().size(); i++) {
-                // if (i % freq != 0 && false) { continue; } // TODO speed up
+                if (i % 64 != 0) { continue; } // TODO speed up
                 const auto &event = events.value()[i];
                 
                 if (particleBatches.empty() && evtBatch.empty()) {
@@ -59,7 +60,7 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t freq) 
         The center is of course the midpoint. We should store the longest component from the center
         to the planes formed by the box.center
     */
-    float diff_scale = 500.0f / static_cast<float>(lastTimestamp - initTimestamp);
+    diff_scale = 500.0f / static_cast<float>(lastTimestamp - initTimestamp);
 
     // Each particle is grouped by event s.t. particle[i] stores a vector of glm::vec3 with a normalized abs. timestamp
     for (size_t i = 0; i < particleBatches.size(); i++) {
@@ -76,7 +77,7 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t freq) 
     max_XYZ.z *= diff_scale;
     center = 0.5f * (min_XYZ + max_XYZ);
 
-    this->spaceWindow = glm::vec4(min_XYZ.y, max_XYZ.x, max_XYZ.y, min_XYZ.x);
+    spaceWindow = glm::vec4(min_XYZ.y, max_XYZ.x, max_XYZ.y, min_XYZ.x);
 
     printf("Loaded %zu event batches\n", particleBatches.size());
     printf("Biggest batch size: %zu\n", max_batchSz);
@@ -170,8 +171,7 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
     MV.pushMatrix();
         for (size_t i = 0; i < particleBatches.size(); i++) {
             for (size_t j = 0; j < particleSizes[i]; j++) {
-                if (j % this->mod_freq == 0) {
-
+                if (j % mod_freq == 0) {
                 MV.pushMatrix();
                 MV.translate(particleBatches[i][j]);
                 MV.scale(particleScale);
@@ -194,120 +194,149 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
     prog.unbind();
 }
 
-float contribution(float t, float center_t) {
-    float f = 125;
-    float h = 4 / (1 * f);
-    // printf("%f \n", h);
-    t = t - center_t / 2;
-    auto complex_result = std::exp(2.0f * std::complex<float>(0.0f, 1.0f) * std::acos(-1.0f) * f *  t) * 
-        (float) std::exp((-4.0f * std::log(2.0f) * std::pow(t, 2.0f)) / std::pow(h, 2.0f));
-    complex_result *= 0.1f; // TODO contribution
-    return std::real(complex_result) + std::imag(complex_result);
+// start 57, final max
+static bool within_inc(float val, float left, float right) {
+    return val >= left && val <= right;
 }
 
-void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
-    prog.bind();
+void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool morlet, float freq, bool pca) {
+    float timeBound_L, timeBound_R,
+        batch_min_t, batch_max_t,
+        x, y, t, polarity; 
 
-    GLuint VBO, VAO;
-    glGenVertexArrays(1, &VAO); 
-    glBindVertexArray(VAO); 
+    // Set up point size
+    float aspectWidth = viewport_resolution.x / static_cast<float>(camera_resolution.x);
+    float aspectHeight = viewport_resolution.y / static_cast<float>(camera_resolution.y);
+    glPointSize(1.0f * glm::max(aspectHeight, aspectWidth));
 
-    glGenBuffers(1, &VBO); 
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // Generate buffers
+    static GLuint VBO, VAO;
+    static bool initialized = false;
+    if (!initialized) {
+        glGenBuffers(1, &VBO); 
+        glGenVertexArrays(1, &VAO); 
+        initialized = true;
+    }
 
-    float min_x = this->min_XYZ.x;
-    float max_x = this->max_XYZ.x;
-    float min_y = this->min_XYZ.y;
-    float max_y = this->max_XYZ.y;
-    glm::mat4 projection = glm::ortho(min_x, max_x, min_y, max_y);
-    glUniformMatrix4fv(prog.getUniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    // Expandable contribution function choice
+    timeBound_L =  timeWindow_L + shutterWindow_L;
+    timeBound_R = timeWindow_L + shutterWindow_R;
+
+    // Select contribution function
+    BaseFunc *contributionFunc = nullptr;
+    int choice = morlet ? 1 : 0; // Can be expanded for new contribution functions
+    switch (choice) {
+        case 0:
+            contributionFunc = new BaseFunc();
+            break;
+
+        case 1: 
+            float f = freq / 1000000 / diff_scale;
+            float h = (timeBound_R - timeBound_L) / 2; // Very rough full width at half maximum
+            float center_t = timeBound_L + h;
+            contributionFunc = new morletFunc(f, h, center_t);
+            break;
+
+    }
 
     glm::vec2 rolling_sum(0.0f, 0.0f);
     std::vector<float> total;
     for (size_t i = 0; i < particleBatches.size(); ++i) {
-        for (size_t j = 0; j < particleSizes[i]; ++j) {
-            float x = particleBatches[i][j].x;
-            float y = particleBatches[i][j].y;
-            float t = particleBatches[i][j].z;
-            float polarity = particleBatches[i][j].w;
+        // Check if batch included
+        batch_min_t = particleBatches[i][0].z;
+        batch_max_t = particleBatches[i][particleSizes[i] - 1].z;
+        if (batch_min_t > timeBound_R) { break; }
+        if (batch_max_t < timeBound_L) { continue; }
+        
+        for (size_t j = 0; j < particleSizes[i]; ++j) { // do binary search?
+            x = particleBatches[i][j].x;
+            y = particleBatches[i][j].y;
+            t = particleBatches[i][j].z;
+            polarity = particleBatches[i][j].w;
+            contributionFunc->setX(x);
+            contributionFunc->setY(y);
+            contributionFunc->setT(t);
+            contributionFunc->setPolarity(polarity);
 
-            if (t <= getTimeWindow_R() && t >= getTimeWindow_L()) {
-
-                // x == top, y == right, z == bottom, w == left
-                if (x >= getSpaceWindow().w && x <= getSpaceWindow().y && y >= getSpaceWindow().x && y <= getSpaceWindow().z) {
+            if (within_inc(t, timeBound_L, timeBound_R)) {
+                if (within_inc(x, spaceWindow.w, spaceWindow.y) && within_inc(y, spaceWindow.x, spaceWindow.z)) {
                     total.push_back(x);
                     total.push_back(y);
-
-                    float weight = morlet ? contribution(t, getTimeWindow_R() - getTimeWindow_L() * polarity) : 1.0f; 
-                    total.push_back(weight);
+                    total.push_back(contributionFunc->getWeight());
 
                     rolling_sum.x += x;
                     rolling_sum.y += y;
                 }
-
             }
             else { // Assumes strictly increasing
                 break;
-
             }
         }
     }
 
-    // Calculate covariance // TODO improve normalization
-    float mean_x = rolling_sum.x / max_x / total.size() / 2;
-    float mean_y = rolling_sum.y / max_y / total.size() / 2;
-
-    float cov_x_y = 0;
-    float cov_x_x = 0;
-    float cov_y_y = 0;
-    for (size_t i = 0; i < total.size(); i += 2) {
-        float x = total[i];
-        float y = total[i + 1];
-
-        cov_x_y += (x / max_x - mean_x) * (y / max_y - mean_y);
-        cov_x_x += (x / max_x - mean_x) * (x / max_x - mean_x);
-        cov_y_y += (y / max_y - mean_y) * (y / max_y - mean_y);
-    }
-
-    cov_x_y /= (total.size() / 2 - 1);
-    cov_x_x /= (total.size() / 2 - 1);
-    cov_y_y /= (total.size() / 2 - 1);
-
-    // Matrix
-    float a = 1;
-    float b = -(cov_x_x + cov_y_y);
-    float c = cov_x_x * cov_y_y - cov_x_y * cov_x_y;
-
-    float eigen1 = (-b + std::sqrt(b*b - 4 * a * c)) / (2 * a);
-    float eigen2 = (-b - std::sqrt(b*b - 4 * a * c)) / (2 * a);
-
-    // Eigen vectors
-    eigenvectors.push_back(glm::vec3(eigen1 - cov_y_y, cov_x_y, 1));
-    eigenvectors.push_back(glm::vec3(eigen2 - cov_y_y, cov_x_y, 1));
-
     // Load data points
+    glBindVertexArray(VAO); 
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, total.size() * sizeof(float), total.data(), GL_DYNAMIC_DRAW);
 
-    // Has to be in this order for some reason IDK
+    prog.bind();
+
     int pos = prog.getAttribute("pos");
 	glVertexAttribPointer(pos, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 	glEnableVertexAttribArray(pos);
 
-    glPointSize(1.0f); 
-    glDrawArrays(GL_POINTS, 0, total.size()); // Probably break up
-
-	// Disable and unbind
-	glDisableVertexAttribArray(pos);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-    
-    glBindVertexArray(0);
-	
-    glDeleteBuffers(1, &VBO); // TODO make permanent
-    glDeleteBuffers(1, &VAO);
-
-	GLSL::checkError(GET_FILE_LINE);
-
+    glm::mat4 projection = glm::ortho(min_XYZ.x, max_XYZ.x, min_XYZ.y, max_XYZ.y);
+    glUniformMatrix4fv(prog.getUniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    glDrawArrays(GL_POINTS, 0, total.size());
 
     prog.unbind();
 
+    glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+    delete contributionFunc;
+
+    if (pca) {
+        // Calculate covariance
+        float mean_x = rolling_sum.x / (total.size() / 3);
+        float mean_y = rolling_sum.y / (total.size() / 3);
+
+        float cov_x_y = 0;
+        float cov_x_x = 0;
+        float cov_y_y = 0;
+        for (size_t i = 0; i < total.size(); i += 3) {
+            float x = total[i];
+            float y = total[i + 1];
+
+            cov_x_y += (x - mean_x) * (y - mean_y);
+            cov_x_x += (x - mean_x) * (x - mean_x);
+            cov_y_y += (y - mean_y) * (y - mean_y);
+        }
+
+        cov_x_y /= (total.size() / 3 - 1);
+        cov_x_x /= (total.size() / 3 - 1);
+        cov_y_y /= (total.size() / 3 - 1);
+
+        // Matrix
+        float a = 1;
+        float b = -(cov_x_x + cov_y_y);
+        float c = cov_x_x * cov_y_y - cov_x_y * cov_x_y;
+
+        float eigen1 = (-b + std::sqrt(b*b - 4 * a * c)) / (2 * a);
+        float eigen2 = (-b - std::sqrt(b*b - 4 * a * c)) / (2 * a);
+
+        // Eigen vectors
+        std::vector<glm::vec3> eigenvectors;
+        eigenvectors.push_back(glm::normalize(glm::vec3(eigen1 - cov_y_y, cov_x_y, 1)));
+        eigenvectors.push_back(glm::normalize(glm::vec3(eigen2 - cov_y_y, cov_x_y, 1)));
+
+        glBegin(GL_LINES);
+        glVertex3f(0, 0, 1);
+        glVertex3f(eigenvectors[0].x, eigenvectors[0].y, eigenvectors[0].z);
+        glVertex3f(0, 0, 1);
+        glVertex3f(eigenvectors[1].x, eigenvectors[1].y, eigenvectors[1].z);
+        glEnd();
+
+    }
+	
+    GLSL::checkError(GET_FILE_LINE);
 }
