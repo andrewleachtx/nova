@@ -1,6 +1,10 @@
 # NOVA
 Neuromorphic Optics Visualization Application
 
+![basic image of nova](docs/img/NOVA_basic.png)
+![gif of nova with DCE](docs/img/NOVA_DCE.gif)
+![gif of nova moving](docs/img/NOVA_bb.gif)
+
 # Table of Contents
 - [NOVA](#nova)
 - [Table of Contents](#table-of-contents)
