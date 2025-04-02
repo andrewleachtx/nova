@@ -24,8 +24,7 @@ MainScene g_mainSceneFBO;
 MainScene g_frameSceneFBO; // TODO maybe change class
 
 Mesh g_meshSphere, g_meshSquare, g_meshCube, g_meshWeirdSquare;
-Program g_progScene;
-Program g_progFrameScene;
+Program g_progScene, g_progInstScene, g_progFrameScene;
 
 glm::vec3 g_lightPos, g_lightCol;
 BPMaterial g_lightMat;
@@ -34,9 +33,10 @@ BPMaterial g_lightMat;
 shared_ptr<EventData> g_eventData;
 
 int g_focusedEvent = -1;
-float g_particleScale(0.35f);
+float g_particleScale = 0.35f;
+bool g_useInstancing = true;
 
-static void setDataAndCamera(){
+static void initDataAndCamera() {
     // Load .aedat events into EventData object //
     g_eventData = make_shared<EventData>();
     g_eventData->initParticlesFromFile(g_dataFilepath);
@@ -45,6 +45,11 @@ static void setDataAndCamera(){
     g_camera = Camera();
     g_camera.setInitPos(700.0f, 125.0f, 1500.0f);
     g_camera.setEvtCenter(g_eventData->getCenter());
+
+    // Instanced Rendering //
+    if (g_useInstancing) {
+        g_eventData->initInstancing();
+    }
 }
 
 static void init() {
@@ -76,11 +81,12 @@ static void init() {
 
         initImGuiStyle(style);
 
-    //initialize data + initialize camera and set it's center//
-        setDataAndCamera();
+    // Init data + camera and set its center //
+        initDataAndCamera();
 
     // Shader Programs //
         g_progScene = genPhongProg(g_resourceDir);
+        g_progInstScene = genInstPhongProg(g_resourceDir);
         g_progFrameScene = genBasicProg(g_resourceDir); 
 
     // Load Shape(s) & Scene //
@@ -132,15 +138,23 @@ static void render() {
     MatrixStack P, MV;
     P.pushMatrix();
     MV.pushMatrix();
-    g_camera.applyProjectionMatrix(P);
-    g_camera.applyViewMatrix(MV);
-    
-    // Draw Main Scene //
-        g_eventData->draw(MV, P, g_progScene,
-                          g_particleScale, g_focusedEvent,
-                          g_lightPos, g_lightCol,
-                          g_lightMat, g_meshSphere,
-                          g_meshCube);
+        g_camera.applyProjectionMatrix(P);
+        g_camera.applyViewMatrix(MV);
+        
+        // Draw Main Scene //
+        if (g_useInstancing) {
+            g_eventData->drawInstanced(MV, P, g_progInstScene,
+                g_particleScale, g_focusedEvent,
+                g_lightPos, g_lightCol,
+                g_lightMat, g_meshSphere);
+        }
+        else {
+            g_eventData->draw(MV, P, g_progScene,
+                g_particleScale, g_focusedEvent,
+                g_lightPos, g_lightCol,
+                g_lightMat, g_meshSphere,
+                g_meshCube);
+        }
 
     P.popMatrix();
     MV.popMatrix();
@@ -246,8 +260,8 @@ int main(int argc, char** argv) {
     while (!glfwWindowShouldClose(g_window)) {
         string oldfilepath = g_dataFilepath;
         render();
-        if(g_dataFilepath!=oldfilepath){
-            setDataAndCamera();
+        if(g_dataFilepath != oldfilepath){
+            initDataAndCamera();
         }
         glfwSwapBuffers(g_window);
         glfwPollEvents();

@@ -25,6 +25,7 @@ class EventData {
         ~EventData();
 
         void initParticlesFromFile(const std::string &filename, size_t freq=10000); // TODO speedup and dynamic
+        void initInstancing();
 
         void drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &prog, float particleScale);
         void draw(MatrixStack &MV, MatrixStack &P, Program &prog,
@@ -32,6 +33,10 @@ class EventData {
             const glm::vec3 &lightPos, const glm::vec3 &lightColor,
             const BPMaterial &lightMat, const Mesh &meshSphere, 
             const Mesh &meshCube);
+        void drawInstanced(MatrixStack &MV, MatrixStack &P, Program &prog,
+            float particleScale, int focused_evt,
+            const glm::vec3 &lightPos, const glm::vec3 &lightColor,
+            const BPMaterial &lightMat, Mesh &meshSphere);
         void drawFrame(Program &prog, std::vector<glm::vec3> &eigenvectors);
 
         const glm::vec3 &getCenter() const { return center; }
@@ -45,9 +50,6 @@ class EventData {
         glm::vec4 &getSpaceWindow() { return spaceWindow; }
         bool &getMorlet() { return morlet; }
         bool &getPCA() { return pca; }
-
-
-
     private:
         std::vector< std::vector<glm::vec4> > particleBatches; // x, y, t, polarity
         size_t mod_freq;
@@ -71,6 +73,12 @@ class EventData {
         glm::vec3 min_XYZ;
         glm::vec3 max_XYZ;
         glm::vec3 center;
+
+        // Instancing information (flattened attributes)
+        std::vector<glm::vec4> instanceData;
+        size_t visible_particleCt;
+        GLuint instVBO;
+        bool is_instInitialized;
 };
 
 #endif // EVENT_DATA_H

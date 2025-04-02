@@ -8,8 +8,15 @@
 // TODO ask about default -1
 EventData::EventData() : initTimestamp(0), lastTimestamp(0), timeWindow_L(-1.0f), timeWindow_R(-1.0f),
     min_XYZ(std::numeric_limits<float>::max()), max_XYZ(std::numeric_limits<float>::lowest()),
-    center(glm::vec3(0.0f)), mod_freq(1), frameLength(0), morlet(false), pca(false) {}
-EventData::~EventData() {}
+    center(glm::vec3(0.0f)), mod_freq(1), frameLength(0), morlet(false), pca(false), visible_particleCt(0),
+    instVBO(0), is_instInitialized(false) {}
+
+EventData::~EventData() {
+    // Now we actually should have a destructor because we are encapsulating a VBO
+    if (instVBO != 0) {
+        glDeleteBuffers(1, &instVBO);
+    }
+}
 
 void EventData::initParticlesFromFile(const std::string &filename, size_t freq) {
     dv::io::MonoCameraRecording reader(filename);
@@ -76,10 +83,53 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t freq) 
     max_XYZ.z *= diff_scale;
     center = 0.5f * (min_XYZ + max_XYZ);
 
+    if (timeWindow_L < 0.0 || timeWindow_R < 0.0) {
+        timeWindow_L = min_XYZ.z;
+        timeWindow_R = max_XYZ.z;
+    }
+
     this->spaceWindow = glm::vec4(min_XYZ.y, max_XYZ.x, max_XYZ.y, min_XYZ.x);
 
     printf("Loaded %zu event batches\n", particleBatches.size());
     printf("Biggest batch size: %zu\n", max_batchSz);
+}
+
+/*
+    This is gonna shift all the data in the original draw call into more compact buffers
+*/
+void EventData::initInstancing() {
+    // We may later call this, so we should have reset logic
+    // TODO: Probably need a reset method anyways upon loading new .aedat4 to destroy old data
+    if (instVBO != 0) {
+        glDeleteBuffers(1, &instVBO);
+    }
+
+
+    instanceData.clear();
+    visible_particleCt = 0;
+
+    for (size_t i = 0; i < particleBatches.size(); i++) {
+        for (size_t j = 0; j < particleSizes[i]; j++) {
+            if (j % this->mod_freq == 0) {
+                if (particleBatches[i][j].z >= timeWindow_L && particleBatches[i][j].z <= timeWindow_R) {
+                    instanceData.push_back(particleBatches[i][j]);
+                    visible_particleCt++;
+                }
+            }
+        }
+    }
+
+    if (instVBO == 0) {
+        glGenBuffers(1, &instVBO);
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, instVBO);
+    glBufferData(GL_ARRAY_BUFFER, instanceData.size() * sizeof(glm::vec4), instanceData.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    is_instInitialized = true;
+
+    printf("Initialized instanced rendering with %zu particles\n", visible_particleCt);
 }
 
 // TODO: Move precalculable things to an init
@@ -190,6 +240,36 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
         }
         
         drawBoundingBoxWireframe(MV, P, prog, particleScale);
+    MV.popMatrix();
+    prog.unbind();
+}
+
+void EventData::drawInstanced(MatrixStack &MV, MatrixStack &P, Program &prog,
+    float particleScale, int focused_evt,
+    const glm::vec3 &lightPos, const glm::vec3 &lightColor,
+    const BPMaterial &lightMat, Mesh &meshSphere) {
+    
+    if (!is_instInitialized || instVBO == 0) {
+        initInstancing();
+    }
+
+    prog.bind();
+
+    // TODO: We may need more than a vec4
+    /*
+    void Mesh::initInstancing(Program &prog, GLuint instVBO, int attribLoc, int data_sz,
+    GLenum dataType, int stride, const void *offset) {
+    */
+    meshSphere.initInstancing(prog, instVBO, prog.getAttribute("aInstancePos"), 
+        4, GL_FLOAT, 0, (const void*)0);
+
+    glUniform1f(prog.getUniform("timeWindow_L"), timeWindow_L);
+    glUniform1f(prog.getUniform("timeWindow_R"), timeWindow_R);
+
+    MV.pushMatrix();
+        MV.scale(particleScale);
+        sendToPhongShader(prog, P, MV, lightPos, lightColor, lightMat);
+        meshSphere.drawInstanced(prog, visible_particleCt, true);
     MV.popMatrix();
     prog.unbind();
 }

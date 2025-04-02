@@ -11,6 +11,7 @@
 #include <vector>
 #include <memory>
 #include <glm/glm.hpp>
+#include <GL/glew.h>
 
 class Program;
 
@@ -32,6 +33,10 @@ public:
 
     void updatePosBuf(const std::vector<glm::vec3>& new_posBuf);
 	void draw(Program& prog, bool indexed=false) const;
+    void drawInstanced(Program& prog, int num_instances, bool indexed=false) const;
+    void initInstancing(Program &prog, GLuint instVBO, int attribLoc, int nbytes,
+        GLenum dataType, int stride, const void *offset);
+
     const unsigned getPosBufID() const;
     const unsigned getPosBufSize() const;
 

@@ -61,7 +61,7 @@ string OpenFileDialog() {
 
 Program genPhongProg(const string &resource_dir) {
     Program prog = Program();
-    prog.setShaderNames(resource_dir + "phong_vsh.glsl", resource_dir + "phong_fsh.glsl");
+    prog.setShaderNames(resource_dir + "phong.vsh", resource_dir + "phong.fsh");
     prog.setVerbose(true);
     prog.init();
 
@@ -95,6 +95,35 @@ Program genBasicProg(const string &resource_dir) {
     prog.addUniform("projection");
 
     // prog.setVerbose(false);
+
+    return prog;
+}
+
+Program genInstPhongProg(const std::string &resource_dir) {
+    Program prog = Program();
+    prog.setShaderNames(resource_dir + "phong_inst.vsh", resource_dir + "phong_inst.fsh");
+    prog.setVerbose(true);
+    prog.init();
+
+    prog.addUniform("P");
+    prog.addUniform("MV");
+    prog.addUniform("MV_it");
+
+    prog.addAttribute("aPos");
+    prog.addAttribute("aNor");
+    prog.addAttribute("aTex");
+    prog.addAttribute("aInstancePos");
+
+    prog.addUniform("lightPos");
+    prog.addUniform("lightCol");
+    prog.addUniform("ka");
+    prog.addUniform("kd");
+    prog.addUniform("ks");
+    prog.addUniform("s");
+    
+    // These two uniforms are used by the shader to cull particles outside the window
+    prog.addUniform("timeWindow_L");
+    prog.addUniform("timeWindow_R");
 
     return prog;
 }

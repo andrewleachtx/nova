@@ -151,6 +151,30 @@ void Mesh::init() {
     GLSL::checkError(GET_FILE_LINE);
 }
 
+void Mesh::initInstancing(Program &prog, GLuint instVBO, int attribLoc, int data_sz,
+    GLenum dataType, int stride, const void *offset) {
+        
+    // This links the instance VBO to the shader attribute location
+    glBindVertexArray(vaoID);
+    glBindBuffer(GL_ARRAY_BUFFER, instVBO);
+    
+    /*
+        We want to allocate for each vertex random data ie pos, normals, texcoords, etc.
+        this just allows us to specify the stride and offset for the data we want to use
+    */
+    glEnableVertexAttribArray(attribLoc);
+    glVertexAttribPointer(attribLoc, data_sz, dataType, GL_FALSE, stride, offset);
+    
+    // This is what makes it instanced, 1 tells OpenGL that this is now per instance not per vertex
+    glVertexAttribDivisor(attribLoc, 1);
+    
+    // Unbinds the VBO and VAO (good practice in general)
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    GLSL::checkError(GET_FILE_LINE);
+}
+
 // Unused
 void Mesh::updatePosBuf(const std::vector<glm::vec3>& new_posBuf) {
     if (posBuf.size() != new_posBuf.size() * 3) {
@@ -201,6 +225,57 @@ void Mesh::draw(Program& prog, bool indexed) const {
     }
     else {
         glDrawArrays(GL_TRIANGLES, 0, (int)(posBuf.size() / 3));
+    }
+
+	// Disable and unbind
+	if(h_tex != -1) {
+	 	glDisableVertexAttribArray(h_tex);
+	}
+	if(h_nor != -1) {
+		glDisableVertexAttribArray(h_nor);
+	}
+
+	glDisableVertexAttribArray(h_pos);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	
+	GLSL::checkError(GET_FILE_LINE);
+}
+
+/*
+    This is to be used for the particle for loop iterating over each particle
+
+    Virtually the same as draw() except for draw call
+*/
+void Mesh::drawInstanced(Program &prog, int num_instances, bool indexed) const {
+    // Bind position buffer
+	int h_pos = prog.getAttribute("aPos");
+	glEnableVertexAttribArray(h_pos);
+	glBindBuffer(GL_ARRAY_BUFFER, posBufID);
+	glVertexAttribPointer(h_pos, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+
+	// Bind normal buffer
+	int h_nor = prog.getAttribute("aNor");
+	if(h_nor != -1 && norBufID != 0) {
+		glEnableVertexAttribArray(h_nor);
+		glBindBuffer(GL_ARRAY_BUFFER, norBufID);
+		glVertexAttribPointer(h_nor, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+	}
+
+	// Bind texcoords buffer
+	int h_tex = prog.getAttribute("aTex");
+	if(h_tex != -1 && texBufID != 0) {
+		glEnableVertexAttribArray(h_tex);
+		glBindBuffer(GL_ARRAY_BUFFER, texBufID);
+		glVertexAttribPointer(h_tex, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+	}
+
+    if (indexed) {
+        glBindVertexArray(vaoID);
+        glDrawElementsInstanced(GL_TRIANGLES, indexBuf.size(), GL_UNSIGNED_INT, (void*)0, num_instances);
+        glBindVertexArray(0);
+    }
+    else {
+        glDrawArraysInstanced(GL_TRIANGLES, 0, (int)(posBuf.size() / 3), num_instances);
     }
 
 	// Disable and unbind

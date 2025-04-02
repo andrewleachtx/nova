@@ -22,10 +22,11 @@ struct WindowContext {
 };
 std::string OpenFileDialog();
 
+// Program / Draw Helpers //
 Program genPhongProg(const std::string &resource_dir);
-void sendToPhongShader(const Program &prog, const MatrixStack &P, const MatrixStack &MV, const vec3 &lightPos, const vec3 &lightCol, const BPMaterial &mat);
-
 Program genBasicProg(const std::string &resource_dir);
+Program genInstPhongProg(const std::string &resource_dir);
+void sendToPhongShader(const Program &prog, const MatrixStack &P, const MatrixStack &MV, const vec3 &lightPos, const vec3 &lightCol, const BPMaterial &mat);
 
 // GLFW Callbacks //
 void error_callback(int error, const char *description);
