@@ -165,24 +165,49 @@ static void render() {
     g_mainSceneFBO.unbind();
 
     // Draw Frame // 
-    if (g_frameSceneFBO.isAutoUpdate() && t - 1 / g_frameSceneFBO.getFPS() >= g_frameSceneFBO.getLastRenderTime()) {
+    if (g_frameSceneFBO.getAutoUpdate() != MANUAL_UPDATE && t - 1 / g_frameSceneFBO.getFPS() >= g_frameSceneFBO.getLastRenderTime()) {
 
-        float framePeriod = g_frameSceneFBO.getFramePeriod();
-        float frameStart = g_eventData->getTimeWindow_L();
-        float frameEnd = g_eventData->getTimeWindow_R();
-        float max_time = g_eventData->getMaxTimestamp();
+        if (g_frameSceneFBO.getAutoUpdate() == EVENT_AUTO_UPDATE) {
+            uint framePeriod = g_frameSceneFBO.getFramePeriod_E();
+            uint frameStart = g_eventData->getEventWindow_L();
+            uint frameEnd = g_eventData->getEventWindow_R();
+            uint maxEvent = g_eventData->getMaxEvent() - 1;
 
-        if (frameStart == frameEnd) { // TODO consider breaking when right bound reaches end
-            g_frameSceneFBO.isAutoUpdate() = false;
+            if (frameStart == frameEnd) { // TODO consider breaking when right bound reaches end
+                g_frameSceneFBO.getAutoUpdate() = MANUAL_UPDATE;
+            }
+            else {
+                g_eventData->getEventWindow_L() = glm::min(maxEvent, frameStart + framePeriod);
+                g_eventData->getEventWindow_R() = glm::min(maxEvent, frameEnd + framePeriod);
+                g_eventData->getTimeWindow_L() = g_eventData->getTimestamp(g_eventData->getEventWindow_L());
+                g_eventData->getTimeWindow_R() = g_eventData->getTimestamp(g_eventData->getEventWindow_R());
+                g_frameSceneFBO.setDirtyBit(true); 
+
+                g_frameSceneFBO.setLastRenderTime(t);
+            }
         }
-        else {
-            g_eventData->getTimeWindow_L() = glm::min(max_time, frameStart + framePeriod);
-            g_eventData->getTimeWindow_R() = glm::min(max_time, frameEnd + framePeriod);
-            g_frameSceneFBO.setDirtyBit(true); 
+        else if (g_frameSceneFBO.getAutoUpdate() == TIME_AUTO_UPDATE) {
+            float framePeriod = g_frameSceneFBO.getFramePeriod_T();
+            float frameStart = g_eventData->getTimeWindow_L();
+            float frameEnd = g_eventData->getTimeWindow_R();
+            float maxTime = g_eventData->getMaxTimestamp();
 
-            g_frameSceneFBO.setLastRenderTime(t);
+            if (frameStart == frameEnd) { // TODO consider breaking when right bound reaches end
+                g_frameSceneFBO.getAutoUpdate() = MANUAL_UPDATE;
+            }
+            else {
+                g_eventData->getTimeWindow_L() = glm::min(maxTime, frameStart + framePeriod);
+                g_eventData->getTimeWindow_R() = glm::min(maxTime, frameEnd + framePeriod);
+                g_eventData->getEventWindow_L() = g_eventData->getFirstEvent(g_eventData->getTimeWindow_L());
+                g_eventData->getEventWindow_R() = g_eventData->getLastEvent(g_eventData->getTimeWindow_R());
+                g_frameSceneFBO.setDirtyBit(true); 
+
+                g_frameSceneFBO.setLastRenderTime(t);
+            }
         }
     }
+
+    // Keep debugging the auto play!
 
     if (g_frameSceneFBO.getDirtyBit()) {
         g_frameSceneFBO.bind();

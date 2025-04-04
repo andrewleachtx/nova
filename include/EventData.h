@@ -19,6 +19,9 @@
     Because timestamp is an int64_t, we should acknowledge possible truncation when
     converting to float.
 */
+const int TIME_SHUTTER = 0; // values must match ImGui::Combo order in utils.cpp
+const int EVENT_SHUTTER = 1;
+
 class EventData {
     public:
         EventData();
@@ -35,22 +38,33 @@ class EventData {
         void drawFrame(Program &prog, glm::vec2 viewport_resolution, 
             bool morlet, float freq, bool pca);
 
+        float getTimestamp(uint event_index) const;
+        uint getFirstEvent(float timestamp) const; // Maybe just need index
+        uint getLastEvent(float timestamp) const;
+
         const glm::vec3 &getCenter() const { return center; }
         const glm::vec3 getMin_XYZ() const { return min_XYZ; } // TODO maybe manipulate window instead
         const glm::vec3 getMax_XYZ() const { return max_XYZ; }
         const float &getMaxTimestamp() const { return max_XYZ.z; }
         const float &getMinTimestamp() const { return min_XYZ.z; }
+        const uint getMaxEvent() const { return totalEvents; }
         float &getTimeWindow_L() { return timeWindow_L; }
         float &getTimeWindow_R() { return timeWindow_R; }
+        uint &getEventWindow_L() { return eventWindow_L; }
+        uint &getEventWindow_R() { return eventWindow_R; }
         glm::vec4 &getSpaceWindow() { return spaceWindow; }
-        float &getShutterWindow_L() { return shutterWindow_L; }
-        float &getShutterWindow_R() { return shutterWindow_R; }
+        float &getTimeShutterWindow_L() { return timeShutterWindow_L; }
+        float &getTimeShutterWindow_R() { return timeShutterWindow_R; }
+        uint &getEventShutterWindow_L() { return eventShutterWindow_L; }
+        uint &getEventShutterWindow_R() { return eventShutterWindow_R; }
+        int &getShutterType() { return shutterType; }
 
     private:
         glm::vec2 camera_resolution;
         float diff_scale;
 
         std::vector< std::vector<glm::vec4> > particleBatches; // x, y, t, polarity
+        uint totalEvents;
         size_t mod_freq;
 
         // Because we pad, we need to store the range of usable particles
@@ -61,12 +75,17 @@ class EventData {
 
         float timeWindow_L;
         float timeWindow_R;
+        uint eventWindow_L;
+        uint eventWindow_R;
+
+        // Maybe move to FrameScene or own helper struct
+        int shutterType;
+        float timeShutterWindow_L;
+        float timeShutterWindow_R;
+        uint eventShutterWindow_L;
+        uint eventShutterWindow_R;
 
         glm::vec4 spaceWindow; // x = top, y = right, z = bottom, w = left 
-        
-        // Maybe move to FrameScene
-        float shutterWindow_L;
-        float shutterWindow_R;
 
         // We can define a bounding box and thus center to rotate around
         glm::vec3 min_XYZ;

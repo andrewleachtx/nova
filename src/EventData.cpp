@@ -6,9 +6,10 @@
 #include <dv-processing/core/utils.hpp>
 
 // TODO ask about default -1
-EventData::EventData() : initTimestamp(0), lastTimestamp(0), timeWindow_L(0.0f), timeWindow_R(0.0f),
-    min_XYZ(std::numeric_limits<float>::max()), max_XYZ(std::numeric_limits<float>::lowest()),
-    center(glm::vec3(0.0f)), mod_freq(1), shutterWindow_L(0.0f), shutterWindow_R(0.0f) {}
+EventData::EventData() : initTimestamp(0), lastTimestamp(0), timeWindow_L(0.0f), timeWindow_R(0.0f), 
+    eventWindow_L(0), eventWindow_R(0), min_XYZ(std::numeric_limits<float>::max()), max_XYZ(std::numeric_limits<float>::lowest()),
+    center(glm::vec3(0.0f)), mod_freq(1), shutterType(0), timeShutterWindow_L(0.0f), timeShutterWindow_R(0.0f),
+    eventShutterWindow_L(0), eventShutterWindow_R(0) {}
 EventData::~EventData() {}
 
 void EventData::initParticlesFromFile(const std::string &filename, size_t point_freq) {
@@ -22,6 +23,7 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t point_
     particleSizes.clear();
     initTimestamp = 0;
     lastTimestamp = 0;
+    totalEvents = 0;
 
     glm::vec3 raw_minXYZ = glm::vec3(std::numeric_limits<float>::max());
     glm::vec3 raw_maxXYZ = glm::vec3(std::numeric_limits<float>::lowest());
@@ -53,6 +55,7 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t point_
             max_batchSz = std::max(max_batchSz, evtBatch.size());
             particleBatches.push_back(evtBatch);
             particleSizes.push_back(evtBatch.size());
+            totalEvents += evtBatch.size();
         }
     }
 
@@ -169,6 +172,7 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
 
     prog.bind();
     MV.pushMatrix();
+        uint rolling = 0;
         for (size_t i = 0; i < particleBatches.size(); i++) {
             for (size_t j = 0; j < particleSizes[i]; j++) {
                 if (j % mod_freq == 0) {
@@ -177,8 +181,8 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
                 MV.scale(particleScale);
 
                 glm::vec3 color = glm::vec3(0.0f, 1.0f, 0.0f);
-                // apply tint if t not in [timeWindow_L, timeWindow_R]
-                if (particleBatches[i][j].z < timeWindow_L || particleBatches[i][j].z > timeWindow_R) {
+                // apply tint if t not in [eventWindow_L, eventWindow_R]
+                if (rolling + j < eventWindow_L || rolling + j > eventWindow_R) { // Does not account for shutter
                     color = glm::vec3(0.5f, 0.5f, 0.5f);
                 }
 
@@ -187,6 +191,7 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
                 MV.popMatrix();
                 }
             }
+            rolling += particleSizes[i];
         }
         
         drawBoundingBoxWireframe(MV, P, prog, particleScale);
@@ -195,14 +200,14 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
 }
 
 // start 57, final max
-static bool within_inc(float val, float left, float right) {
-    return val >= left && val <= right;
+static inline bool within_inc(uint val, uint left, uint right) {
+    return left <= val && val <= right;
 }
 
 void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool morlet, float freq, bool pca) {
     float timeBound_L, timeBound_R,
-        batch_min_t, batch_max_t,
         x, y, t, polarity; 
+    uint eventBound_L, eventBound_R;
 
     // Set up point size
     float aspectWidth = viewport_resolution.x / static_cast<float>(camera_resolution.x);
@@ -218,9 +223,11 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
         initialized = true;
     }
 
-    // Expandable contribution function choice
-    timeBound_L =  timeWindow_L + shutterWindow_L;
-    timeBound_R = timeWindow_L + shutterWindow_R;
+    // Set up bounds
+    timeBound_L =  timeWindow_L + timeShutterWindow_L;
+    timeBound_R = timeWindow_L + timeShutterWindow_R;
+    eventBound_L = eventWindow_L + eventShutterWindow_L;
+    eventBound_R = eventWindow_L + eventShutterWindow_R;
 
     // Select contribution function
     BaseFunc *contributionFunc = nullptr;
@@ -239,16 +246,20 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 
     }
 
+    uint rolling_count = 0;
     glm::vec2 rolling_sum(0.0f, 0.0f);
     std::vector<float> total;
     for (size_t i = 0; i < particleBatches.size(); ++i) {
+        uint batchSize = particleSizes[i];
+
         // Check if batch included
-        batch_min_t = particleBatches[i][0].z;
-        batch_max_t = particleBatches[i][particleSizes[i] - 1].z;
-        if (batch_min_t > timeBound_R) { break; }
-        if (batch_max_t < timeBound_L) { continue; }
-        
-        for (size_t j = 0; j < particleSizes[i]; ++j) { // do binary search?
+        if (rolling_count > eventBound_R) { break; }
+        if (rolling_count + batchSize < eventBound_L) { 
+            rolling_count += batchSize;
+            continue; 
+        }
+
+        for (size_t j = 0; j < particleSizes[i]; ++j) { 
             x = particleBatches[i][j].x;
             y = particleBatches[i][j].y;
             t = particleBatches[i][j].z;
@@ -258,7 +269,7 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
             contributionFunc->setT(t);
             contributionFunc->setPolarity(polarity);
 
-            if (within_inc(t, timeBound_L, timeBound_R)) {
+            if (within_inc(rolling_count + j, eventBound_L, eventBound_R)) {
                 if (within_inc(x, spaceWindow.w, spaceWindow.y) && within_inc(y, spaceWindow.x, spaceWindow.z)) {
                     total.push_back(x);
                     total.push_back(y);
@@ -268,10 +279,11 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
                     rolling_sum.y += y;
                 }
             }
-            else { // Assumes strictly increasing
+            else if (rolling_count + j > eventBound_R) { // Could be handled in loop conditions
                 break;
             }
         }
+        rolling_count += batchSize;
     }
 
     // Load data points
@@ -340,3 +352,77 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 	
     GLSL::checkError(GET_FILE_LINE);
 }
+
+// Change to functions called multiple times (takes in event/time returns time/event (account for first or last timestamp))
+float EventData::getTimestamp(uint event_index) const {
+    uint rolling = 0;
+    for (size_t i = 0; i < particleBatches.size(); ++i) {
+        size_t batchSize = particleSizes[i];
+
+        // Get event if in batch
+        if (event_index - rolling < batchSize) {
+            return particleBatches[i][event_index - rolling].z;
+        }
+        rolling += batchSize;
+
+    }
+    std::cerr << "Error: getTimestamp" << std::endl;
+    return -1.0f;
+}
+
+// If timestamp does not exist return first event included in window
+uint EventData::getFirstEvent(float timestamp) const {
+    uint rolling = 0;
+    float batchTime_L, batchTime_R, t;
+    for (size_t i = 0; i < particleBatches.size(); ++i) {
+        batchTime_L = particleBatches[i][0].z;
+        batchTime_R = particleBatches[i][particleSizes[i] - 1].z;
+
+        // Skip batch if doesn't contain event
+        if (batchTime_R < timestamp) {
+            rolling += particleSizes[i];
+            continue;
+        }
+
+        // Get event if in batch
+        for (size_t j = 0; j < particleSizes[i]; ++j) { // TODO binary search?
+            t = particleBatches[i][j].z;
+
+            if (t >= timestamp) {
+                return rolling + j;
+            }
+
+        }
+    }
+    std::cerr << "Error: getFirstEvent" << std::endl;
+    return std::numeric_limits<uint>::max();
+} 
+
+// If timestamp does not exist return last event included in window
+uint EventData::getLastEvent(float timestamp) const {
+    uint rolling = 0;
+    float batchTime_L, batchTime_R, t;
+    for (size_t i = particleBatches.size() - 1; i >= 0; --i) {
+        batchTime_L = particleBatches[i][0].z;
+        batchTime_R = particleBatches[i][particleSizes[i] - 1].z;
+
+        // Skip batch if doesn't contain event
+        rolling += particleSizes[i];
+        if (timestamp < batchTime_L) {
+            continue;
+        }
+
+        // Get event if in batch 
+        for (size_t j = particleSizes[i] - 1; j >= 0; --j) { // TODO binary search?
+            t = particleBatches[i][j].z;
+
+            if (t <= timestamp) { 
+                return totalEvents - rolling + j;
+            }
+
+        }
+    }
+    std::cerr << "Error: getLastEvent" << std::endl;
+    return std::numeric_limits<uint>::max();
+}
+
