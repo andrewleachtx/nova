@@ -5,87 +5,88 @@
 #include <cstdio>
 #include <dv-processing/core/utils.hpp>
 
-// TODO ask about default -1
-EventData::EventData() : initTimestamp(0), lastTimestamp(0), timeWindow_L(-1.0f), timeWindow_R(-1.0f),
-    min_XYZ(std::numeric_limits<float>::max()), max_XYZ(std::numeric_limits<float>::lowest()),
+using std::vector;
+
+// TODO ask about default -1 (if you mean timewindow, we know time >=0 so -1.0 indicates it hasn't been
+// initialized for later if statements if needed). also, my GitLens sees "--global", see below
+// https://docs.github.com/en/get-started/git-basics/setting-your-username-in-git
+EventData::EventData() : earliestTimestamp(0), latestTimestamp(0), timeWindow_L(0.0f), timeWindow_R(0.0f),
+    minXYZ(std::numeric_limits<float>::max()), maxXYZ(std::numeric_limits<float>::lowest()),
     center(glm::vec3(0.0f)), mod_freq(1), frameLength(0), morlet(false), pca(false) {}
 EventData::~EventData() {}
+
+void EventData::reset() {
+    // TODO: Do we want to free the memory? Because if we go from like 100'000 particles -> 10 we should. Otherwise, better to keep
+    evtParticles.clear();
+    earliestTimestamp = 0;
+    latestTimestamp = 0;
+    minXYZ = glm::vec3(std::numeric_limits<float>::max());
+    maxXYZ = glm::vec3(std::numeric_limits<float>::lowest());
+    center = glm::vec3(0.0f);
+    timeWindow_L = -1.0f;
+    timeWindow_R = -1.0f;
+    frameLength = 0;
+    spaceWindow = glm::vec4(0.0f);
+}
 
 void EventData::initParticlesFromFile(const std::string &filename, size_t freq) {
     dv::io::MonoCameraRecording reader(filename);
     this->mod_freq = freq;
 
-    // TODO: Should just write a reset method using this and call it for sanity check
-    size_t max_batchSz = 0;
-    particleBatches.clear();
-    particleSizes.clear();
-    initTimestamp = 0;
-    lastTimestamp = 0;
-
-    glm::vec3 raw_minXYZ = glm::vec3(std::numeric_limits<float>::max());
-    glm::vec3 raw_maxXYZ = glm::vec3(std::numeric_limits<float>::lowest());
+    // If someone calls init again, we should always reset
+    reset();
 
     // https://dv-processing.inivation.com/rel_1_7/reading_data.html#read-events-from-a-file
     while (reader.isRunning()) {
         if (const auto events = reader.getNextEventBatch(); events.has_value()) {
-            std::vector<glm::vec4> evtBatch;
-            for (size_t i = 0; i < events.value().size(); i++) {
-                // if (i % freq != 0 && false) { continue; } // TODO speed up
-                const auto &event = events.value()[i];
-                
-                if (particleBatches.empty() && evtBatch.empty()) {
-                    initTimestamp = event.timestamp();
+            for (auto &evt : events.value()) {
+                long long evtTimestamp = evt.timestamp();
+                if (evtParticles.empty()) {
+                    earliestTimestamp = evtTimestamp;
                 }
+                
+                // Assumedly the last event batch and event has the latest timestamp, but not sure - so use max(...)
+                latestTimestamp = std::max(latestTimestamp, evtTimestamp);
 
-                lastTimestamp = std::max(lastTimestamp, event.timestamp());
+                // We can sort of "normalize" the timestamp to start at 0 this way.
+                float relativeTimestamp = static_cast<float>(evtTimestamp - earliestTimestamp);
+                glm::vec4 evt_xytp = glm::vec4(
+                    static_cast<float>(evt.x()),
+                    static_cast<float>(evt.y()),
+                    relativeTimestamp,
+                    static_cast<float>(evt.polarity()) // (float)true == 1.0f, (float)false == 0.0f
+                );
 
-                float relativeTimestamp = static_cast<float>(event.timestamp() - initTimestamp);
-                glm::vec4 event_xyzw = glm::vec4(static_cast<float>(event.x()), static_cast<float>(event.y()), 
-                    relativeTimestamp, static_cast<float>(event.polarity()));
-                evtBatch.push_back(event_xyzw);
+                evtParticles.push_back(evt_xytp);
 
-                // glm::min/max are beautiful functions. Guarantees each component is min/max'd always
-                raw_minXYZ = glm::min(raw_minXYZ, glm::vec3(event_xyzw)); // TODO simplify
-                raw_maxXYZ = glm::max(raw_maxXYZ, glm::vec3(event_xyzw));
+                // glm::min/max does componentwise; .x = min(.x, candidate_x), .y = min(.y, candidate_y), ... 
+                minXYZ = glm::min(minXYZ, glm::vec3(evt_xytp));
+                maxXYZ = glm::max(maxXYZ, glm::vec3(evt_xytp));
             }
-
-            max_batchSz = std::max(max_batchSz, evtBatch.size());
-            particleBatches.push_back(evtBatch);
-            particleSizes.push_back(evtBatch.size());
         }
     }
 
-    /*
-        The center is of course the midpoint. We should store the longest component from the center
-        to the planes formed by the box.center
-    */
-    float diff_scale = 500.0f / static_cast<float>(lastTimestamp - initTimestamp);
-
-    // Each particle is grouped by event s.t. particle[i] stores a vector of glm::vec3 with a normalized abs. timestamp
-    for (size_t i = 0; i < particleBatches.size(); i++) {
-        particleBatches[i].resize(max_batchSz, glm::vec4(0.0f));
-        for (size_t j = 0; j < particleSizes[i]; j++) {
-            particleBatches[i][j].z = particleBatches[i][j].z * diff_scale;
-        }
+    // TODO: This is arbitrary, we can should define as a constant somewhere
+    // Apply scale
+    static const float diff_scale = 500.0f / static_cast<float>(latestTimestamp - earliestTimestamp);
+    for (auto &evt : evtParticles) {
+        evt.z *= diff_scale;
     }
 
-    // Normalize the timestamp of the min/max XYZ
-    min_XYZ = raw_minXYZ;
-    max_XYZ = raw_maxXYZ;
-    min_XYZ.z *= diff_scale;
-    max_XYZ.z *= diff_scale;
-    center = 0.5f * (min_XYZ + max_XYZ);
+    // Normalize the timestamp of the min/max XYZ for bounding box
+    this->minXYZ.z *= diff_scale;
+    this->maxXYZ.z *= diff_scale;
+    this->center = 0.5f * (minXYZ + maxXYZ);
 
-    this->spaceWindow = glm::vec4(min_XYZ.y, max_XYZ.x, max_XYZ.y, min_XYZ.x);
+    this->spaceWindow = glm::vec4(minXYZ.y, maxXYZ.x, maxXYZ.y, minXYZ.x);
 
-    printf("Loaded %zu event batches\n", particleBatches.size());
-    printf("Biggest batch size: %zu\n", max_batchSz);
+    printf("Loaded %zu particles from %s\n", evtParticles.size(), filename.c_str());
 }
 
 // TODO: Move precalculable things to an init
 void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &prog, float particleScale) {
-    const glm::vec3 &scaled_minXYZ = min_XYZ; 
-    const glm::vec3 &scaled_maxXYZ = max_XYZ;
+    const glm::vec3 &scaled_minXYZ = minXYZ; 
+    const glm::vec3 &scaled_maxXYZ = maxXYZ;
     
     glLineWidth(2.0f);
     
@@ -119,12 +120,12 @@ void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Progra
     // Buffer for x0, y0, z0, x1, y1, ... of each line segment
     static std::vector<float> line_posbuf(12 * 2 * 3);
     for (int i = 0; i < 12; i++) {
-        // Start
+        // Starting XYZ
         line_posbuf.push_back(corners[edges[i][0]].x);
         line_posbuf.push_back(corners[edges[i][0]].y);
         line_posbuf.push_back(corners[edges[i][0]].z);
         
-        // End
+        // Ending XYZ
         line_posbuf.push_back(corners[edges[i][1]].x);
         line_posbuf.push_back(corners[edges[i][1]].y);
         line_posbuf.push_back(corners[edges[i][1]].z);
@@ -168,24 +169,21 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
 
     prog.bind();
     MV.pushMatrix();
-        for (size_t i = 0; i < particleBatches.size(); i++) {
-            for (size_t j = 0; j < particleSizes[i]; j++) {
-                if (j % this->mod_freq == 0) {
-
+        for (size_t i = 0; i < evtParticles.size(); i++) {
+            if (i % this->mod_freq == 0) {
                 MV.pushMatrix();
-                MV.translate(particleBatches[i][j]);
-                MV.scale(particleScale);
+                    MV.translate(evtParticles[i]);
+                    MV.scale(particleScale);
 
-                glm::vec3 color = glm::vec3(0.0f, 1.0f, 0.0f);
-                // apply tint if t not in [timeWindow_L, timeWindow_R]
-                if (particleBatches[i][j].z < timeWindow_L || particleBatches[i][j].z > timeWindow_R) {
-                    color = glm::vec3(0.5f, 0.5f, 0.5f);
-                }
+                    glm::vec3 color = glm::vec3(0.0f, 1.0f, 0.0f);
+                    // apply tint if t not in [timeWindow_L, timeWindow_R]
+                    if (evtParticles[i].z < timeWindow_L || evtParticles[i].z > timeWindow_R) {
+                        color = glm::vec3(0.5f, 0.5f, 0.5f);
+                    }
 
-                sendToPhongShader(prog, P, MV, lightPos, color, lightMat);
-                meshSphere.draw(prog);
+                    sendToPhongShader(prog, P, MV, lightPos, color, lightMat);
+                    meshSphere.draw(prog);
                 MV.popMatrix();
-                }
             }
         }
         
@@ -194,11 +192,13 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
     prog.unbind();
 }
 
-float contribution(float t, float center_t) {
-    float f = 125;
-    float h = 4 / (1 * f);
+// FIXME: This is a quick function that I think is only called in this source file, should be inline static
+// FIXME: I see f = 125; - be consistent if you are going to use the .0f or not. Otherwise compiler defaults to double.
+inline static float contribution(float t, float center_t) {
+    float f = 125.0f;
+    float h = 4.0f / (1.0f * f);
     // printf("%f \n", h);
-    t = t - center_t / 2;
+    t = t - center_t / 2.0f;
     auto complex_result = std::exp(2.0f * std::complex<float>(0.0f, 1.0f) * std::acos(-1.0f) * f *  t) * 
         (float) std::exp((-4.0f * std::log(2.0f) * std::pow(t, 2.0f)) / std::pow(h, 2.0f));
     complex_result *= 0.1f; // TODO contribution
@@ -215,45 +215,47 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
     glGenBuffers(1, &VBO); 
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
-    float min_x = this->min_XYZ.x;
-    float max_x = this->max_XYZ.x;
-    float min_y = this->min_XYZ.y;
-    float max_y = this->max_XYZ.y;
+    float min_x = this->minXYZ.x;
+    float max_x = this->maxXYZ.x;
+    float min_y = this->minXYZ.y;
+    float max_y = this->maxXYZ.y;
     glm::mat4 projection = glm::ortho(min_x, max_x, min_y, max_y);
     glUniformMatrix4fv(prog.getUniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
     glm::vec2 rolling_sum(0.0f, 0.0f);
     std::vector<float> total;
-    for (size_t i = 0; i < particleBatches.size(); ++i) {
-        for (size_t j = 0; j < particleSizes[i]; ++j) {
-            float x = particleBatches[i][j].x;
-            float y = particleBatches[i][j].y;
-            float t = particleBatches[i][j].z;
-            float polarity = particleBatches[i][j].w;
+    // FIXME: I changed this to work with the 1D array.
+    for (size_t i = 0; i < evtParticles.size(); i++) {
+        // FIXME: This is also a neat way to unpack things of the same type, use multi declaration where you want.
+        float x(evtParticles[i].x), y(evtParticles[i].y), t(evtParticles[i].z);
+        float polarity(evtParticles[i].w);
+        // float x = evtParticles[i].x;
+        // float y = evtParticles[i].y;
+        // float t = evtParticles[i].z;
+        // float polarity = evtParticles[i].w;
 
-            if (t <= getTimeWindow_R() && t >= getTimeWindow_L()) {
+        // FIXME: You don't need getters within class
+        if (t <= getTimeWindow_R() && t >= getTimeWindow_L()) {
+            // x == top, y == right, z == bottom, w == left
+            if (x >= getSpaceWindow().w && x <= getSpaceWindow().y && y >= getSpaceWindow().x && y <= getSpaceWindow().z) {
+                total.push_back(x);
+                total.push_back(y);
 
-                // x == top, y == right, z == bottom, w == left
-                if (x >= getSpaceWindow().w && x <= getSpaceWindow().y && y >= getSpaceWindow().x && y <= getSpaceWindow().z) {
-                    total.push_back(x);
-                    total.push_back(y);
+                float weight = morlet ? contribution(t, getTimeWindow_R() - getTimeWindow_L() * polarity) : 1.0f; 
+                total.push_back(weight);
 
-                    float weight = morlet ? contribution(t, getTimeWindow_R() - getTimeWindow_L() * polarity) : 1.0f; 
-                    total.push_back(weight);
-
-                    rolling_sum.x += x;
-                    rolling_sum.y += y;
-                }
-
+                rolling_sum.x += x;
+                rolling_sum.y += y;
             }
-            else { // Assumes strictly increasing
-                break;
-
-            }
+        }
+        else { // Assumes strictly increasing
+            break;
         }
     }
 
     // Calculate covariance // TODO improve normalization
+    // FIXME: Division is very costly (slow) on a per-frame scale, make sure to use it only when you must
+    // otherwise if the divisor is constant, store inverse (1 / divisor) in the class and do a * inverse
     float mean_x = rolling_sum.x / max_x / total.size() / 2;
     float mean_y = rolling_sum.y / max_y / total.size() / 2;
 
@@ -307,7 +309,5 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
 
 	GLSL::checkError(GET_FILE_LINE);
 
-
     prog.unbind();
-
 }

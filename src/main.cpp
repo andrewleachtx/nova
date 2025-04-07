@@ -5,10 +5,6 @@
 #include <dv-processing/io/mono_camera_recording.hpp>
 #include <dv-processing/core/frame.hpp>
 
-// TODO: Probably just using namespace std is fine at this point
-using std::cout, std::cerr, std::endl;
-using std::vector, std::string, std::make_shared, std::shared_ptr, std::pair, std::array, std::tuple;
-using std::stoi, std::stoul, std::min, std::max, std::numeric_limits, std::abs;
 using namespace std;
 
 // We can pass in a user pointer to callback functions - shouldn't require an updater; vars have inf lifespan
@@ -36,7 +32,7 @@ shared_ptr<EventData> g_eventData;
 int g_focusedEvent = -1;
 float g_particleScale(0.35f);
 
-static void setDataAndCamera(){
+static void initEvtDataAndCamera() {
     // Load .aedat events into EventData object //
     g_eventData = make_shared<EventData>();
     g_eventData->initParticlesFromFile(g_dataFilepath);
@@ -76,8 +72,8 @@ static void init() {
 
         initImGuiStyle(style);
 
-    //initialize data + initialize camera and set it's center//
-        setDataAndCamera();
+    // Initialize data + camera and set its center //
+        initEvtDataAndCamera();
 
     // Shader Programs //
         g_progScene = genPhongProg(g_resourceDir);
@@ -243,12 +239,20 @@ int main(int argc, char** argv) {
 
     init();
 
+    // FIXME: We shouldn't be doing a strcpy every time there is a render call...
+    string curFilepath = g_dataFilepath;
     while (!glfwWindowShouldClose(g_window)) {
-        string oldfilepath = g_dataFilepath;
         render();
-        if(g_dataFilepath!=oldfilepath){
-            setDataAndCamera();
+        
+        // string oldfilepath = g_dataFilepath;
+        // if(g_dataFilepath!=oldfilepath){
+        //     initEvtDataAndCamera();
+        // }
+        if (g_dataFilepath != curFilepath) {
+            curFilepath = g_dataFilepath;
+            initEvtDataAndCamera();
         }
+
         glfwSwapBuffers(g_window);
         glfwPollEvents();
     }
