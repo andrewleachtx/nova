@@ -354,14 +354,14 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 }
 
 // Change to functions called multiple times (takes in event/time returns time/event (account for first or last timestamp))
-float EventData::getTimestamp(uint event_index) const {
+float EventData::getTimestamp(uint eventIndex) const {
     uint rolling = 0;
     for (size_t i = 0; i < particleBatches.size(); ++i) {
         size_t batchSize = particleSizes[i];
 
         // Get event if in batch
-        if (event_index - rolling < batchSize) {
-            return particleBatches[i][event_index - rolling].z;
+        if (eventIndex - rolling < batchSize) {
+            return particleBatches[i][eventIndex - rolling].z;
         }
         rolling += batchSize;
 

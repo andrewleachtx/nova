@@ -19,8 +19,6 @@
     Because timestamp is an int64_t, we should acknowledge possible truncation when
     converting to float.
 */
-const int TIME_SHUTTER = 0; // values must match ImGui::Combo order in utils.cpp
-const int EVENT_SHUTTER = 1;
 
 class EventData {
     public:
@@ -38,8 +36,8 @@ class EventData {
         void drawFrame(Program &prog, glm::vec2 viewport_resolution, 
             bool morlet, float freq, bool pca);
 
-        float getTimestamp(uint event_index) const;
-        uint getFirstEvent(float timestamp) const; // Maybe just need index
+        float getTimestamp(uint eventIndex) const;
+        uint getFirstEvent(float timestamp) const;
         uint getLastEvent(float timestamp) const;
 
         const glm::vec3 &getCenter() const { return center; }
@@ -58,6 +56,9 @@ class EventData {
         uint &getEventShutterWindow_L() { return eventShutterWindow_L; }
         uint &getEventShutterWindow_R() { return eventShutterWindow_R; }
         int &getShutterType() { return shutterType; }
+
+        static const int TIME_SHUTTER = 0; // values must match ImGui::Combo order in utils.cpp
+        static const int EVENT_SHUTTER = 1;
 
     private:
         glm::vec2 camera_resolution;

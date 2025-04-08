@@ -7,9 +7,6 @@
     Includes attributes and members (getters/setters) specifically relating to the digital 
     coded exposure viewport.
 */
-const int MANUAL_UPDATE = 0;
-const int EVENT_AUTO_UPDATE = 1;
-const int TIME_AUTO_UPDATE = 2;
 
 class FrameScene: public MainScene {
 public:
@@ -23,7 +20,7 @@ public:
     bool &getPCA() { return pca; }
     int &getAutoUpdate() { return autoUpdate; }
     float &getFreq() { return freq; }
-    float &getFPS() { return fps; }
+    float &getUpdateFPS() { return fps; }
     float &getFramePeriod_T() { return framePeriod_T; }
     uint &getFramePeriod_E() { return framePeriod_E; }
 
@@ -31,6 +28,10 @@ public:
     void setLastRenderTime(float x) { lastRenderTime = x; } 
 
     void setEventAutoUpdate() {  }
+
+    static const int MANUAL_UPDATE = 0;
+    static const int EVENT_AUTO_UPDATE = 1;
+    static const int TIME_AUTO_UPDATE = 2;
 
 private:
     bool morlet;

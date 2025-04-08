@@ -379,14 +379,14 @@ static void timeWindowWrapper(bool &dTimeWindow, shared_ptr<EventData> &evtData,
     dTimeWindow |= ImGui::SliderFloat("Initial Time", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
     dTimeWindow |= ImGui::SliderFloat("Final Time", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
     ImGui::SliderFloat("##FramePeriod_Time", &frameSceneFBO.getFramePeriod_T(), 0, evtData->getMaxTimestamp()); 
-    ImGui::SameLine();
-    if (ImGui::Button("- time")) { // TODO encapsulate
+
+    if (ImGui::Button("-##time")) { 
         dTimeWindow = true;
         evtData->getTimeWindow_L() = evtData->getTimeWindow_L() - frameSceneFBO.getFramePeriod_T();
         evtData->getTimeWindow_R() = evtData->getTimeWindow_R() - frameSceneFBO.getFramePeriod_T();
     } 
     ImGui::SameLine();
-    if (ImGui::Button("+ time")) {
+    if (ImGui::Button("+##time")) {
         dTimeWindow = true;
         evtData->getTimeWindow_L() = evtData->getTimeWindow_L() + frameSceneFBO.getFramePeriod_T();
         evtData->getTimeWindow_R() = evtData->getTimeWindow_R() + frameSceneFBO.getFramePeriod_T();
@@ -397,6 +397,7 @@ static void timeWindowWrapper(bool &dTimeWindow, shared_ptr<EventData> &evtData,
 
     evtData->getTimeWindow_L() = std::clamp(evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
     evtData->getTimeWindow_R() = std::clamp(evtData->getTimeWindow_R(), evtData->getTimeWindow_L(), evtData->getMaxTimestamp());
+    frameSceneFBO.getFramePeriod_T() = std::max(frameSceneFBO.getFramePeriod_T(), 0.0f);
 }
 
 static void eventWindowWrapper(bool &dEventWindow, shared_ptr<EventData> &evtData, FrameScene &frameSceneFBO) {
@@ -405,14 +406,14 @@ static void eventWindowWrapper(bool &dEventWindow, shared_ptr<EventData> &evtDat
     dEventWindow |= ImGui::SliderInt("Initial Event", (int *) &evtData->getEventWindow_L(), 0, evtData->getMaxEvent() - 1);
     dEventWindow |= ImGui::SliderInt("Final Event", (int *) &evtData->getEventWindow_R(), 0, evtData->getMaxEvent() - 1);
     ImGui::SliderInt("##FramePeriod_Event", (int *) &frameSceneFBO.getFramePeriod_E(), 0, evtData->getMaxEvent() - 1); 
-    ImGui::SameLine();
-    if (ImGui::Button("- event")) { // TODO encapsulate?
+
+    if (ImGui::Button("-##event")) {
         dEventWindow = true;
         evtData->getEventWindow_L() = evtData->getEventWindow_L() - frameSceneFBO.getFramePeriod_E();
         evtData->getEventWindow_R() = evtData->getEventWindow_R() - frameSceneFBO.getFramePeriod_E();
     }
     ImGui::SameLine();
-    if (ImGui::Button("+ event")) {
+    if (ImGui::Button("+##event")) {
         dEventWindow = true;
         evtData->getEventWindow_L() = evtData->getEventWindow_L() + frameSceneFBO.getFramePeriod_E();
         evtData->getEventWindow_R() = evtData->getEventWindow_R() + frameSceneFBO.getFramePeriod_E();
@@ -423,6 +424,7 @@ static void eventWindowWrapper(bool &dEventWindow, shared_ptr<EventData> &evtDat
 
     evtData->getEventWindow_L() = std::clamp(evtData->getEventWindow_L(), (uint) 0, evtData->getMaxEvent() - 1);
     evtData->getEventWindow_R() = std::clamp(evtData->getEventWindow_R(), evtData->getEventWindow_L(), evtData->getMaxEvent() - 1);
+    frameSceneFBO.getFramePeriod_E() = std::max(frameSceneFBO.getFramePeriod_E(), (uint) 0);
 }
 
 static void spaceWindowWrapper(bool &dSpaceWindow, shared_ptr<EventData> &evtData) {
@@ -506,8 +508,8 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::Separator();
 
         timeWindowWrapper(dTimeWindow, evtData, frameSceneFBO);
-        eventWindowWrapper(dEventWindow, evtData, frameSceneFBO);
-        if (dTimeWindow) { 
+        eventWindowWrapper(dEventWindow, evtData, frameSceneFBO); 
+        if (dTimeWindow) { // Ensure windows match (time window == events window)
             evtData->getEventWindow_L() = evtData->getFirstEvent(evtData->getTimeWindow_L());
             evtData->getEventWindow_R() = evtData->getLastEvent(evtData->getTimeWindow_R());
         }  
@@ -516,7 +518,6 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
             evtData->getTimeWindow_R() = evtData->getTimestamp(evtData->getEventWindow_R());
         }
 
-              
         spaceWindowWrapper(dSpaceWindow, evtData);
 
         ImGui::Text("Processing options");    
@@ -527,7 +528,7 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
             evtData->getTimeShutterWindow_L() = 0;
             evtData->getTimeShutterWindow_R() = 0;
         }
-        if (evtData->getShutterType() == TIME_SHUTTER) {
+        if (evtData->getShutterType() == EventData::TIME_SHUTTER) {
             float frameLength_T = evtData->getTimeWindow_R() - evtData->getTimeWindow_L();
             dProcessingOptions |= ImGui::SliderFloat("Shutter Initial (time)", &evtData->getTimeShutterWindow_L(), 0, frameLength_T); 
             dProcessingOptions |= ImGui::SliderFloat("Shutter Final (time)", &evtData->getTimeShutterWindow_R(), 0, frameLength_T);  
@@ -535,7 +536,7 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
             evtData->getTimeShutterWindow_L() = std::clamp(evtData->getTimeShutterWindow_L(), 0.0f, evtData->getTimeWindow_R() - evtData->getTimeWindow_L());
             evtData->getTimeShutterWindow_R() = std::clamp(evtData->getTimeShutterWindow_R(), evtData->getTimeShutterWindow_L(), evtData->getTimeWindow_R() - evtData->getTimeWindow_L());
         }
-        else if (evtData->getShutterType() == EVENT_SHUTTER) {
+        else if (evtData->getShutterType() == EventData::EVENT_SHUTTER) {
             float frameLength_E = evtData->getEventWindow_R() - evtData->getEventWindow_L();
             dProcessingOptions |= ImGui::SliderInt("Shutter Initial (events)", (int *) &evtData->getEventShutterWindow_L(), 0, frameLength_E); 
             dProcessingOptions |= ImGui::SliderInt("Shutter Final (events)", (int *) &evtData->getEventShutterWindow_R(), 0, frameLength_E);   
@@ -543,15 +544,15 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
             evtData->getEventShutterWindow_L() = std::clamp(evtData->getEventShutterWindow_L(), (uint) 0, evtData->getEventWindow_R() - evtData->getEventWindow_L());
             evtData->getEventShutterWindow_R() = std::clamp(evtData->getEventShutterWindow_R(), evtData->getEventShutterWindow_L(), evtData->getEventWindow_R() - evtData->getEventWindow_L());        
         }
-        if (dTimeWindow || dEventWindow || dProcessingOptions) { // See if very slow
-            if (evtData->getShutterType() == TIME_SHUTTER) {
+        if (dTimeWindow || dEventWindow || dProcessingOptions) { // Ensure internal shutter values match for both options
+            if (evtData->getShutterType() == EventData::TIME_SHUTTER) {
                 uint startEvent = evtData->getFirstEvent(evtData->getTimeWindow_L());
                 uint leftEvent = evtData->getFirstEvent(evtData->getTimeWindow_L() + evtData->getTimeShutterWindow_L());
                 uint rightEvent = evtData->getLastEvent(evtData->getTimeWindow_L() + evtData->getTimeShutterWindow_R());
                 evtData->getEventShutterWindow_L() = leftEvent - startEvent;
                 evtData->getEventShutterWindow_R() = rightEvent - startEvent;
             }
-            else if (evtData->getShutterType() == EVENT_SHUTTER) {
+            else if (evtData->getShutterType() == EventData::EVENT_SHUTTER) {
                 float startTime = evtData->getTimestamp(evtData->getEventWindow_L());
                 float leftTime = evtData->getTimestamp(evtData->getEventWindow_L() + evtData->getEventShutterWindow_L());
                 float rightTime = evtData->getTimestamp(evtData->getEventWindow_L() + evtData->getEventShutterWindow_R());
@@ -559,26 +560,27 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
                 evtData->getTimeShutterWindow_R() = rightTime - startTime;
             }
         }
-
-        dProcessingOptions |= ImGui::SliderFloat("FPS", &frameSceneFBO.getFPS(), 0, 100);
-        if (ImGui::Button("Play (Time period)") && frameSceneFBO.getAutoUpdate() == MANUAL_UPDATE) {
-            frameSceneFBO.getAutoUpdate() = TIME_AUTO_UPDATE;
+ 
+        // Auto update controls
+        dProcessingOptions |= ImGui::SliderFloat("FPS", &frameSceneFBO.getUpdateFPS(), 0, 100);
+        if (ImGui::Button("Play (Time period)") && frameSceneFBO.getAutoUpdate() == FrameScene::MANUAL_UPDATE) {
+            frameSceneFBO.getAutoUpdate() = FrameScene::TIME_AUTO_UPDATE;
             frameSceneFBO.setLastRenderTime(glfwGetTime());
         }
-        if (ImGui::Button("Play (Events period)") && frameSceneFBO.getAutoUpdate() == MANUAL_UPDATE) {
-            frameSceneFBO.getAutoUpdate() = EVENT_AUTO_UPDATE;
+        if (ImGui::Button("Play (Events period)") && frameSceneFBO.getAutoUpdate() == FrameScene::MANUAL_UPDATE) {
+            frameSceneFBO.getAutoUpdate() = FrameScene::EVENT_AUTO_UPDATE;
             frameSceneFBO.setLastRenderTime(glfwGetTime());
         }
-        frameSceneFBO.getFPS() = std::max(frameSceneFBO.getFPS(), 0.0f);
-        frameSceneFBO.getFramePeriod_T() = std::max(frameSceneFBO.getFramePeriod_T(), 0.0f);
-        frameSceneFBO.getFramePeriod_E() = std::max(frameSceneFBO.getFramePeriod_E(), (uint) 0);
+        frameSceneFBO.getUpdateFPS() = std::max(frameSceneFBO.getUpdateFPS(), 0.0f);
 
-        dProcessingOptions |= ImGui::SliderFloat("Frequency", &frameSceneFBO.getFreq(), 0.001f, 5000); // TODO decide reasonable range
-        dProcessingOptions |= ImGui::Checkbox("Morlet Shutter", &frameSceneFBO.isMorlet()); // TODO Fix time normalizations
+        // "Post" processing
+        dProcessingOptions |= ImGui::SliderFloat("Frequency (Hz)", &frameSceneFBO.getFreq(), 0.001f, 5000); // TODO decide reasonable range
+        dProcessingOptions |= ImGui::Checkbox("Morlet Shutter", &frameSceneFBO.isMorlet());
         dProcessingOptions |= ImGui::Checkbox("PCA", &frameSceneFBO.getPCA());
         frameSceneFBO.getFreq() = std::max(frameSceneFBO.getFreq(), 0.01f);
         ImGui::Separator();
 
+        // Video (ffmpeg) controls
         ImGui::Text("Video options"); // TODO add documentation
         inputTextWrapper(video_name); // TODO consider including library to allow inputting string as parameter
         if (ImGui::Button("Start Record")) {
