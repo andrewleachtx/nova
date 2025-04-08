@@ -61,7 +61,7 @@ string OpenFileDialog() {
 
 Program genPhongProg(const string &resource_dir) {
     Program prog = Program();
-    prog.setShaderNames(resource_dir + "phong_vsh.glsl", resource_dir + "phong_fsh.glsl");
+    prog.setShaderNames(resource_dir + "phong.vsh", resource_dir + "phong.fsh");
     prog.setVerbose(true);
     prog.init();
 
@@ -85,9 +85,31 @@ Program genPhongProg(const string &resource_dir) {
     return prog;
 }
 
+Program genInstProg(const std::string &resource_dir) {
+    Program prog = Program();
+    prog.setShaderNames(resource_dir + "phong_inst.vsh", resource_dir + "phong_inst.fsh");
+    prog.setVerbose(true);
+    prog.init();
+
+    prog.addUniform("P");
+    prog.addUniform("MV");
+    prog.addUniform("MV_it");
+    
+    prog.addUniform("particleScale");
+    prog.addUniform("lightPos");
+    prog.addUniform("lightCol");
+
+    prog.addAttribute("aPos");
+    prog.addAttribute("aNor");
+    prog.addAttribute("aTex");
+    prog.addAttribute("aInstPos"); // We additionally require a position matrix per vertex for instancing
+
+    return prog;
+}
+
 Program genBasicProg(const string &resource_dir) {
     Program prog = Program();
-    prog.setShaderNames(resource_dir + "basic_vsh.glsl", resource_dir + "basic_fsh.glsl");
+    prog.setShaderNames(resource_dir + "basic.vsh", resource_dir + "basic.fsh");
     prog.setVerbose(true);
     prog.init();
 
@@ -471,4 +493,11 @@ float randFloat() {
 
 vec3 randXYZ() {
     return vec3(randFloat(), randFloat(), randFloat());
+}
+
+void genVBO(GLuint &vbo, size_t num_bytes, size_t draw_type) {
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, num_bytes, 0, draw_type);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }

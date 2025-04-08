@@ -5,15 +5,21 @@
 #include <cstdio>
 #include <dv-processing/core/utils.hpp>
 
-using std::vector;
+using std::vector, std::cout, std::endl;
 
 // TODO ask about default -1 (if you mean timewindow, we know time >=0 so -1.0 indicates it hasn't been
 // initialized for later if statements if needed). also, my GitLens sees "--global", see below
 // https://docs.github.com/en/get-started/git-basics/setting-your-username-in-git
 EventData::EventData() : earliestTimestamp(0), latestTimestamp(0), timeWindow_L(0.0f), timeWindow_R(0.0f),
     minXYZ(std::numeric_limits<float>::max()), maxXYZ(std::numeric_limits<float>::lowest()),
-    center(glm::vec3(0.0f)), mod_freq(1), frameLength(0), morlet(false), pca(false) {}
-EventData::~EventData() {}
+    center(glm::vec3(0.0f)), mod_freq(1), frameLength(0), morlet(false), pca(false), instVBO(0) {}
+    
+EventData::~EventData() {
+    if (instVBO) {
+        glDeleteBuffers(1, &instVBO);
+        instVBO = 0;
+    }
+}
 
 void EventData::reset() {
     // TODO: Do we want to free the memory? Because if we go from like 100'000 particles -> 10 we should. Otherwise, better to keep
@@ -27,11 +33,34 @@ void EventData::reset() {
     timeWindow_R = -1.0f;
     frameLength = 0;
     spaceWindow = glm::vec4(0.0f);
+
+    if (instVBO) {
+        glDeleteBuffers(1, &instVBO);
+        instVBO = 0;
+    }
 }
 
-void EventData::initParticlesFromFile(const std::string &filename, size_t freq) {
+// https://learnopengl.com/Advanced-OpenGL/Instancing
+void EventData::initInstancing(Program &progInst) {
+    // Generate / initialize a VBO here. GL_STATIC_DRAW may be better, should test
+    genVBO(instVBO, evtParticles.size() * sizeof(glm::vec4), GL_DYNAMIC_DRAW);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, instVBO);
+    GLint aInstPos = progInst.getAttribute("aInstPos");
+
+    // Update the vertex attribute pointer every 1 * sizeof(glm::vec4) bytes
+    glEnableVertexAttribArray(aInstPos);
+    glVertexAttribPointer(aInstPos, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), nullptr);
+    glVertexAttribDivisor(aInstPos, 1); // Update once per instance (not per vertex)
+    
+    // Pass in the existing data
+    glBufferSubData(GL_ARRAY_BUFFER, 0, evtParticles.size() * sizeof(glm::vec4), evtParticles.data());
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void EventData::initParticlesFromFile(const std::string &filename) {
     dv::io::MonoCameraRecording reader(filename);
-    this->mod_freq = freq;
+    // this->mod_freq = freq;
 
     // If someone calls init again, we should always reset
     reset();
@@ -164,8 +193,7 @@ void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Progra
 void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
     float particleScale, int focused_evt,
     const glm::vec3 &lightPos, const glm::vec3 &lightColor,
-    const BPMaterial &lightMat, const Mesh &meshSphere, 
-    const Mesh &meshCube) {
+    const BPMaterial &lightMat, const Mesh &meshSphere) { 
 
     prog.bind();
     MV.pushMatrix();
@@ -192,8 +220,59 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
     prog.unbind();
 }
 
+void EventData::drawInstanced(MatrixStack &MV, MatrixStack &P, Program &prog,
+    float particleScale, int focused_evt,
+    const glm::vec3 &lightPos, const glm::vec3 &lightColor,
+    const BPMaterial &lightMat, const Mesh &meshSphere) {
+    
+    if (evtParticles.empty() || mod_freq == 0) {
+        return;
+    }
+
+    size_t instCt = std::max(1ULL, evtParticles.size() / mod_freq);
+
+    glBindVertexArray(meshSphere.getVAOID());
+
+    glBindBuffer(GL_ARRAY_BUFFER, instVBO);
+    GLint aInstPos = prog.getAttribute("aInstPos");
+    if (aInstPos >= 0) {
+        glEnableVertexAttribArray(aInstPos);
+        glVertexAttribPointer(aInstPos, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), nullptr);
+        glVertexAttribDivisor(aInstPos, 1);
+    }
+    else {
+        printf("aInstPos not found in shader\n");
+        return;
+    }
+
+    // Send uniforms to GPU/shader
+    prog.bind();
+    glUniformMatrix4fv(prog.getUniform("P"), 1, GL_FALSE, glm::value_ptr(P.topMatrix()));
+    glUniformMatrix4fv(prog.getUniform("MV"), 1, GL_FALSE, glm::value_ptr(MV.topMatrix()));
+    glUniformMatrix4fv(prog.getUniform("MV_it"), 1, GL_FALSE, 
+                      glm::value_ptr(glm::inverse(glm::transpose(MV.topMatrix()))));
+    glUniform3fv(prog.getUniform("lightPos"), 1, glm::value_ptr(lightPos));
+    glUniform3fv(prog.getUniform("lightCol"), 1, glm::value_ptr(lightColor));
+    glUniform1f(prog.getUniform("particleScale"), particleScale);
+    
+    meshSphere.draw(prog, true, 0, instCt);
+    // glPointSize(1);
+    // glEnable(GL_POINT_SMOOTH);
+    // glEnable(GL_BLEND);
+    // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    // glDrawArraysInstanced(GL_POINTS, 0, 1, instCt);
+
+    glDisableVertexAttribArray(aInstPos);
+    glVertexAttribDivisor(aInstPos, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    GLSL::checkError();
+    prog.unbind();
+}
+
 // FIXME: This is a quick function that I think is only called in this source file, should be inline static
-// FIXME: I see f = 125; - be consistent if you are going to use the .0f or not. Otherwise compiler defaults to double.
+// FIXME: I see f = 125; - I recommend using .f or .0f for consistency because 125 is an integer literal
+//        implicitly cast (probably optimized) and .0 without f defaults to double
 inline static float contribution(float t, float center_t) {
     float f = 125.0f;
     float h = 4.0f / (1.0f * f);

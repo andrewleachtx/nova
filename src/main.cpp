@@ -19,9 +19,8 @@ string g_resourceDir, g_dataFilepath;
 MainScene g_mainSceneFBO;
 MainScene g_frameSceneFBO; // TODO maybe change class
 
-Mesh g_meshSphere, g_meshSquare, g_meshCube, g_meshWeirdSquare;
-Program g_progScene;
-Program g_progFrameScene;
+Mesh g_meshSphere;
+Program g_progScene, g_progInstScene, g_progFrameScene;
 
 glm::vec3 g_lightPos, g_lightCol;
 BPMaterial g_lightMat;
@@ -36,6 +35,7 @@ static void initEvtDataAndCamera() {
     // Load .aedat events into EventData object //
     g_eventData = make_shared<EventData>();
     g_eventData->initParticlesFromFile(g_dataFilepath);
+    g_eventData->initInstancing(g_progInstScene);
 
     // Camera //
     g_camera = Camera();
@@ -72,19 +72,17 @@ static void init() {
 
         initImGuiStyle(style);
 
+    // Shader Programs //
+        g_progScene = genPhongProg(g_resourceDir);
+        g_progInstScene = genInstProg(g_resourceDir);
+        g_progFrameScene = genBasicProg(g_resourceDir); 
+
     // Initialize data + camera and set its center //
         initEvtDataAndCamera();
 
-    // Shader Programs //
-        g_progScene = genPhongProg(g_resourceDir);
-        g_progFrameScene = genBasicProg(g_resourceDir); 
-
     // Load Shape(s) & Scene //
         g_meshSphere.loadMesh(g_resourceDir + "sphere.obj");
-        g_meshCube.loadMesh(g_resourceDir + "cube.obj");
-
         g_meshSphere.init();
-        g_meshCube.init();
 
         g_lightPos = glm::vec3(0.0f, 1000.0f, 0.0f);
         g_lightCol = glm::vec3((187 / 255.0f), (178 / 255.0f), (233 / 255.0f));
@@ -132,11 +130,16 @@ static void render() {
     g_camera.applyViewMatrix(MV);
     
     // Draw Main Scene //
-        g_eventData->draw(MV, P, g_progScene,
-                          g_particleScale, g_focusedEvent,
-                          g_lightPos, g_lightCol,
-                          g_lightMat, g_meshSphere,
-                          g_meshCube);
+        // g_eventData->draw(MV, P, g_progScene,
+        //     g_particleScale, g_focusedEvent,
+        //     g_lightPos, g_lightCol,
+        //     g_lightMat, g_meshSphere
+        // );
+        g_eventData->drawInstanced(MV, P, g_progInstScene,
+            g_particleScale, g_focusedEvent,
+            g_lightPos, g_lightCol,
+            g_lightMat, g_meshSphere
+        );
 
     P.popMatrix();
     MV.popMatrix();
@@ -201,7 +204,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    // TODO: Can keep for a "fullscreen" mode setting later perhaps
+    // TODO: Can keep for a "fullscreen" mode setting later
     // GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     // const GLFWvidmode* mode = glfwGetVideoMode(monitor);
     // g_window = glfwCreateWindow(mode->width, mode->height, "NOVA", monitor, nullptr);

@@ -24,15 +24,19 @@ class EventData {
         EventData();
         ~EventData();
 
-        void initParticlesFromFile(const std::string &filename, size_t freq=10000); // TODO speedup and dynamic
         void reset();
+        void initInstancing(Program &instancingProg);
+        void initParticlesFromFile(const std::string &filename); // TODO speedup and dynamic
 
         void drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &prog, float particleScale);
         void draw(MatrixStack &MV, MatrixStack &P, Program &prog,
             float particleScale, int focused_evt,
             const glm::vec3 &lightPos, const glm::vec3 &lightColor,
-            const BPMaterial &lightMat, const Mesh &meshSphere, 
-            const Mesh &meshCube);
+            const BPMaterial &lightMat, const Mesh &meshSphere);
+        void drawInstanced(MatrixStack &MV, MatrixStack &P, Program &prog,
+            float particleScale, int focused_evt,
+            const glm::vec3 &lightPos, const glm::vec3 &lightColor,
+            const BPMaterial &lightMat, const Mesh &meshSphere);
         void drawFrame(Program &prog, std::vector<glm::vec3> &eigenvectors);
 
         const glm::vec3 &getCenter() const { return center; }
@@ -48,6 +52,8 @@ class EventData {
         bool &getPCA() { return pca; }
 
     private:
+        // TODO: Might be better to just store a std::bitset for polarity, and something dynamic like a color
+        // indicator for a (although we would need a vec3 for a full RGB)
         std::vector<glm::vec4> evtParticles; // x, y, t, polarity (false=0.0, true=1.0)
         size_t mod_freq; // only draw the mod_freq'th particle of the ones we read in
 
@@ -68,6 +74,9 @@ class EventData {
         glm::vec3 minXYZ;
         glm::vec3 maxXYZ;
         glm::vec3 center;
+
+        // Instancing
+        GLuint instVBO;
 };
 
 #endif // EVENT_DATA_H

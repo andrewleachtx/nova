@@ -9,9 +9,4 @@ if ($LASTEXITCODE -ne 0) {
 # ./build/Debug/NOVA.exe "./resources" "./data/test_data.aedat4"
 # ./build/Debug/NOVA.exe "./resources" "./data/lights.aedat4"
 
-# ./build/Release/NOVA.exe "./resources" "./data/circle.aedat4"
-# ./build/Release/NOVA.exe "./resources" "./data/test_data.aedat4"
-# ./build/Release/NOVA.exe "./resources" "./data/1.5V_withoutpapertowel_2400RPM.aedat4"
-# ./build/Release/NOVA.exe "./resources" "./data/1.5V_withpapertowel.aedat4"
 ./build/Release/NOVA.exe "./resources" "./data/lights.aedat4"
-# ./build/Release/NOVA.exe "./resources" "./data/circle.aedat4"
