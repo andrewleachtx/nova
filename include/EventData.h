@@ -28,14 +28,12 @@ class EventData {
         void initInstancing(Program &instancingProg);
         void initParticlesFromFile(const std::string &filename); // TODO speedup and dynamic
 
-        void drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &prog, float particleScale);
+        void drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &prog);
         void draw(MatrixStack &MV, MatrixStack &P, Program &prog,
-            float particleScale, int focused_evt,
-            const glm::vec3 &lightPos, const glm::vec3 &lightColor,
+            float particleScale, const glm::vec3 &lightPos, const glm::vec3 &lightColor,
             const BPMaterial &lightMat, const Mesh &meshSphere);
         void drawInstanced(MatrixStack &MV, MatrixStack &P, Program &prog,
-            float particleScale, int focused_evt,
-            const glm::vec3 &lightPos, const glm::vec3 &lightColor,
+            float particleScale, const glm::vec3 &lightPos, const glm::vec3 &lightColor,
             const BPMaterial &lightMat, const Mesh &meshSphere);
         void drawFrame(Program &prog, std::vector<glm::vec3> &eigenvectors);
 

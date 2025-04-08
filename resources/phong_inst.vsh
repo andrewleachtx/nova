@@ -8,9 +8,9 @@ uniform float particleScale;
 uniform vec3 lightPos;
 uniform vec3 lightCol;
 
-layout(location = 2) in vec3 aPos;
-layout(location = 3) in vec3 aNor;
-layout(location = 4) in vec4 aInstPos; // this is the position we have to shift to
+in vec3 aPos;
+in vec3 aNor;
+in vec4 aInstPos; // this is the position we have to shift to
 
 out vec3 vPos;
 out vec3 vNor;

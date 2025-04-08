@@ -113,7 +113,7 @@ void EventData::initParticlesFromFile(const std::string &filename) {
 }
 
 // TODO: Move precalculable things to an init
-void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &prog, float particleScale) {
+void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &prog) {
     const glm::vec3 &scaled_minXYZ = minXYZ; 
     const glm::vec3 &scaled_maxXYZ = maxXYZ;
     
@@ -191,8 +191,7 @@ void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Progra
 }
 
 void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
-    float particleScale, int focused_evt,
-    const glm::vec3 &lightPos, const glm::vec3 &lightColor,
+    float particleScale, const glm::vec3 &lightPos, const glm::vec3 &lightColor,
     const BPMaterial &lightMat, const Mesh &meshSphere) { 
 
     prog.bind();
@@ -215,14 +214,13 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
             }
         }
         
-        drawBoundingBoxWireframe(MV, P, prog, particleScale);
+        drawBoundingBoxWireframe(MV, P, prog);
     MV.popMatrix();
     prog.unbind();
 }
 
 void EventData::drawInstanced(MatrixStack &MV, MatrixStack &P, Program &prog,
-    float particleScale, int focused_evt,
-    const glm::vec3 &lightPos, const glm::vec3 &lightColor,
+    float particleScale, const glm::vec3 &lightPos, const glm::vec3 &lightColor,
     const BPMaterial &lightMat, const Mesh &meshSphere) {
     
     if (evtParticles.empty() || mod_freq == 0) {
@@ -255,12 +253,12 @@ void EventData::drawInstanced(MatrixStack &MV, MatrixStack &P, Program &prog,
     glUniform3fv(prog.getUniform("lightCol"), 1, glm::value_ptr(lightColor));
     glUniform1f(prog.getUniform("particleScale"), particleScale);
     
-    meshSphere.draw(prog, true, 0, instCt);
-    // glPointSize(1);
-    // glEnable(GL_POINT_SMOOTH);
-    // glEnable(GL_BLEND);
-    // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    // glDrawArraysInstanced(GL_POINTS, 0, 1, instCt);
+    // meshSphere.draw(prog, true, 0, instCt);
+    glPointSize((GLfloat)particleScale);
+    glEnable(GL_POINT_SMOOTH);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDrawArraysInstanced(GL_POINTS, 0, 1, (GLsizei)instCt);
 
     glDisableVertexAttribArray(aInstPos);
     glVertexAttribDivisor(aInstPos, 0);
@@ -375,7 +373,7 @@ void EventData::drawFrame(Program &prog, std::vector<vec3> &eigenvectors) {
 	glEnableVertexAttribArray(pos);
 
     glPointSize(1.0f); 
-    glDrawArrays(GL_POINTS, 0, total.size()); // Probably break up
+    glDrawArrays(GL_POINTS, 0, (GLsizei)total.size()); // Probably break up
 
 	// Disable and unbind
 	glDisableVertexAttribArray(pos);

@@ -28,8 +28,7 @@ BPMaterial g_lightMat;
 // Maybe use unique_ptr
 shared_ptr<EventData> g_eventData;
 
-int g_focusedEvent = -1;
-float g_particleScale(0.35f);
+float g_particleScale(0.75f);
 
 static void initEvtDataAndCamera() {
     // Load .aedat events into EventData object //
@@ -136,7 +135,7 @@ static void render() {
         //     g_lightMat, g_meshSphere
         // );
         g_eventData->drawInstanced(MV, P, g_progInstScene,
-            g_particleScale, g_focusedEvent,
+            g_particleScale,
             g_lightPos, g_lightCol,
             g_lightMat, g_meshSphere
         );
