@@ -33,7 +33,7 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t point_
         if (const auto events = reader.getNextEventBatch(); events.has_value()) {
             std::vector<glm::vec4> evtBatch;
             for (size_t i = 0; i < events.value().size(); i++) {
-                if (i % 64 != 0) { continue; } // TODO speed up
+                // if (i % 64 != 0) { continue; } // TODO speed up
                 const auto &event = events.value()[i];
                 
                 if (particleBatches.empty() && evtBatch.empty()) {
@@ -63,21 +63,21 @@ void EventData::initParticlesFromFile(const std::string &filename, size_t point_
         The center is of course the midpoint. We should store the longest component from the center
         to the planes formed by the box.center
     */
-    diff_scale = 500.0f / static_cast<float>(lastTimestamp - initTimestamp);
+    diffScale = 500.0f / static_cast<float>(lastTimestamp - initTimestamp);
 
     // Each particle is grouped by event s.t. particle[i] stores a vector of glm::vec3 with a normalized abs. timestamp
     for (size_t i = 0; i < particleBatches.size(); i++) {
         particleBatches[i].resize(max_batchSz, glm::vec4(0.0f));
         for (size_t j = 0; j < particleSizes[i]; j++) {
-            particleBatches[i][j].z = particleBatches[i][j].z * diff_scale;
+            particleBatches[i][j].z = particleBatches[i][j].z * diffScale;
         }
     }
 
     // Normalize the timestamp of the min/max XYZ
     min_XYZ = raw_minXYZ;
     max_XYZ = raw_maxXYZ;
-    min_XYZ.z *= diff_scale;
-    max_XYZ.z *= diff_scale;
+    min_XYZ.z *= diffScale;
+    max_XYZ.z *= diffScale;
     center = 0.5f * (min_XYZ + max_XYZ);
 
     spaceWindow = glm::vec4(min_XYZ.y, max_XYZ.x, max_XYZ.y, min_XYZ.x);
@@ -238,7 +238,7 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
             break;
 
         case 1: 
-            float f = freq / 1000000 / diff_scale;
+            float f = freq / 1000000 / diffScale;
             float h = (timeBound_R - timeBound_L) / 2; // Very rough full width at half maximum
             float center_t = timeBound_L + h;
             contributionFunc = new morletFunc(f, h, center_t);
@@ -353,15 +353,34 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
     GLSL::checkError(GET_FILE_LINE);
 }
 
-// Change to functions called multiple times (takes in event/time returns time/event (account for first or last timestamp))
-float EventData::getTimestamp(uint eventIndex) const {
+void EventData::normalizeTime() {
+    float factor = diffScale * TIME_CONVERSION;
+    min_XYZ.z *= factor;
+    max_XYZ.z *= factor;
+    timeWindow_L *= factor;
+    timeWindow_R *= factor;
+    timeShutterWindow_L *= factor;
+    timeShutterWindow_R *= factor;
+}
+
+void EventData::oddizeTime() {
+    float factor = diffScale * TIME_CONVERSION;
+    min_XYZ.z /= factor;
+    max_XYZ.z /= factor;
+    timeWindow_L /= factor;
+    timeWindow_R /= factor;
+    timeShutterWindow_L /= factor;
+    timeShutterWindow_R /= factor;
+}
+
+float EventData::getTimestamp(uint eventIndex, float oddFactor) const {
     uint rolling = 0;
     for (size_t i = 0; i < particleBatches.size(); ++i) {
         size_t batchSize = particleSizes[i];
 
         // Get event if in batch
         if (eventIndex - rolling < batchSize) {
-            return particleBatches[i][eventIndex - rolling].z;
+            return particleBatches[i][eventIndex - rolling].z / oddFactor;
         }
         rolling += batchSize;
 
@@ -371,7 +390,9 @@ float EventData::getTimestamp(uint eventIndex) const {
 }
 
 // If timestamp does not exist return first event included in window
-uint EventData::getFirstEvent(float timestamp) const {
+uint EventData::getFirstEvent(float timestamp, float normFactor) const {
+    timestamp *= normFactor; 
+
     uint rolling = 0;
     float batchTime_L, batchTime_R, t;
     for (size_t i = 0; i < particleBatches.size(); ++i) {
@@ -399,7 +420,9 @@ uint EventData::getFirstEvent(float timestamp) const {
 } 
 
 // If timestamp does not exist return last event included in window
-uint EventData::getLastEvent(float timestamp) const {
+uint EventData::getLastEvent(float timestamp, float normFactor) const {
+    timestamp *= normFactor; 
+
     uint rolling = 0;
     float batchTime_L, batchTime_R, t;
     for (size_t i = particleBatches.size() - 1; i >= 0; --i) {

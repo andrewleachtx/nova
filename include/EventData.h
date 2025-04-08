@@ -35,11 +35,14 @@ class EventData {
             const Mesh &meshCube);
         void drawFrame(Program &prog, glm::vec2 viewport_resolution, 
             bool morlet, float freq, bool pca);
+        void normalizeTime();
+        void oddizeTime();
 
-        float getTimestamp(uint eventIndex) const;
-        uint getFirstEvent(float timestamp) const;
-        uint getLastEvent(float timestamp) const;
+        float getTimestamp(uint eventIndex, float oddFactor = 1.0f) const;
+        uint getFirstEvent(float timestamp, float normFactor = 1.0f) const;
+        uint getLastEvent(float timestamp, float normFactor = 1.0f) const;
 
+        const float getDiffScale() const { return diffScale; }
         const glm::vec3 &getCenter() const { return center; }
         const glm::vec3 getMin_XYZ() const { return min_XYZ; } // TODO maybe manipulate window instead
         const glm::vec3 getMax_XYZ() const { return max_XYZ; }
@@ -57,12 +60,13 @@ class EventData {
         uint &getEventShutterWindow_R() { return eventShutterWindow_R; }
         int &getShutterType() { return shutterType; }
 
+        static const int TIME_CONVERSION = 1000; // Could be made setable
         static const int TIME_SHUTTER = 0; // values must match ImGui::Combo order in utils.cpp
         static const int EVENT_SHUTTER = 1;
 
     private:
         glm::vec2 camera_resolution;
-        float diff_scale;
+        float diffScale;
 
         std::vector< std::vector<glm::vec4> > particleBatches; // x, y, t, polarity
         uint totalEvents;

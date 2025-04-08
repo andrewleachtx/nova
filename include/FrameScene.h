@@ -11,10 +11,13 @@
 class FrameScene: public MainScene {
 public:
     FrameScene() : MainScene::MainScene(), morlet(false), pca(false),
-        autoUpdate(false), freq(0.01f), fps(0.0f) {}
+        autoUpdate(false), freq(0.01f), fps(0.0f), 
+        framePeriod_T(0.0f), framePeriod_E(0)  {}
     ~FrameScene() {}
 
     bool initialize(int width, int height) { return MainScene::initialize(width, height, true); };
+    void normalizeTime(float factor) { framePeriod_T *= factor; }
+    void oddizeTime(float factor) { framePeriod_T /= factor; }
 
     bool &isMorlet() { return morlet; }
     bool &getPCA() { return pca; }
@@ -26,8 +29,6 @@ public:
 
     float getLastRenderTime() const { return lastRenderTime; } 
     void setLastRenderTime(float x) { lastRenderTime = x; } 
-
-    void setEventAutoUpdate() {  }
 
     static const int MANUAL_UPDATE = 0;
     static const int EVENT_AUTO_UPDATE = 1;

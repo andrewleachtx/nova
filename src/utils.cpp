@@ -363,6 +363,7 @@ void drawGUIDockspace() {
     ImGui::End();
 }
 
+// Helper functions for DrawGUI
 static void inputTextWrapper(std::string &name) {
     const unsigned int max_length = 50; // TODO document range and decide if reasonable
 
@@ -374,7 +375,7 @@ static void inputTextWrapper(std::string &name) {
 }
 
 static void timeWindowWrapper(bool &dTimeWindow, shared_ptr<EventData> &evtData, FrameScene &frameSceneFBO) {
-    ImGui::Text("Time Window [%.3f, %.3f]", evtData->getTimeWindow_L(), evtData->getTimeWindow_R());
+    ImGui::Text("Time Window [%.3f, %.3f] (ms)", evtData->getTimeWindow_L(), evtData->getTimeWindow_R());
         
     dTimeWindow |= ImGui::SliderFloat("Initial Time", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
     dTimeWindow |= ImGui::SliderFloat("Final Time", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
@@ -392,7 +393,7 @@ static void timeWindowWrapper(bool &dTimeWindow, shared_ptr<EventData> &evtData,
         evtData->getTimeWindow_R() = evtData->getTimeWindow_R() + frameSceneFBO.getFramePeriod_T();
     }
     ImGui::SameLine();
-    ImGui::Text("Frame Period (time)");
+    ImGui::Text("Frame Period (ms)");
     ImGui::Separator();
 
     evtData->getTimeWindow_L() = std::clamp(evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
@@ -493,6 +494,7 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::SliderFloat("Particle Scale", &particle_scale, 0.1f, 2.5f);
         ImGui::Separator();
 
+        // FPS
         updateFPS(fps);
         float avgFPS = calculateAverageFPS();
         float minFPS = getMinFPS();
@@ -503,21 +505,24 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::Text("Min FPS: %.1f", minFPS);
         ImGui::Text("Max FPS: %.1f", maxFPS);
         ImGui::Separator();
-
         ImGui::PlotLines("##FPS History", fps_historyBuf.data(), fps_historyBuf.size(), fps_bufIdx, nullptr, 0.0f, maxFPS + 10.0f, ImVec2(0, 80));
         ImGui::Separator();
+
+        // Windows
+        float normFactor = evtData->getDiffScale() * EventData::TIME_CONVERSION;
+        evtData->oddizeTime();
+        frameSceneFBO.oddizeTime(normFactor);
 
         timeWindowWrapper(dTimeWindow, evtData, frameSceneFBO);
         eventWindowWrapper(dEventWindow, evtData, frameSceneFBO); 
         if (dTimeWindow) { // Ensure windows match (time window == events window)
-            evtData->getEventWindow_L() = evtData->getFirstEvent(evtData->getTimeWindow_L());
-            evtData->getEventWindow_R() = evtData->getLastEvent(evtData->getTimeWindow_R());
+            evtData->getEventWindow_L() = evtData->getFirstEvent(evtData->getTimeWindow_L(), normFactor);
+            evtData->getEventWindow_R() = evtData->getLastEvent(evtData->getTimeWindow_R(), normFactor);
         }  
         else if (dEventWindow) { 
-            evtData->getTimeWindow_L() = evtData->getTimestamp(evtData->getEventWindow_L());
-            evtData->getTimeWindow_R() = evtData->getTimestamp(evtData->getEventWindow_R());
+            evtData->getTimeWindow_L() = evtData->getTimestamp(evtData->getEventWindow_L(), normFactor);
+            evtData->getTimeWindow_R() = evtData->getTimestamp(evtData->getEventWindow_R(), normFactor);
         }
-
         spaceWindowWrapper(dSpaceWindow, evtData);
 
         ImGui::Text("Processing options");    
@@ -530,36 +535,38 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         }
         if (evtData->getShutterType() == EventData::TIME_SHUTTER) {
             float frameLength_T = evtData->getTimeWindow_R() - evtData->getTimeWindow_L();
-            dProcessingOptions |= ImGui::SliderFloat("Shutter Initial (time)", &evtData->getTimeShutterWindow_L(), 0, frameLength_T); 
-            dProcessingOptions |= ImGui::SliderFloat("Shutter Final (time)", &evtData->getTimeShutterWindow_R(), 0, frameLength_T);  
-        
-            evtData->getTimeShutterWindow_L() = std::clamp(evtData->getTimeShutterWindow_L(), 0.0f, evtData->getTimeWindow_R() - evtData->getTimeWindow_L());
-            evtData->getTimeShutterWindow_R() = std::clamp(evtData->getTimeShutterWindow_R(), evtData->getTimeShutterWindow_L(), evtData->getTimeWindow_R() - evtData->getTimeWindow_L());
+            dProcessingOptions |= ImGui::SliderFloat("Shutter Initial (ms)", &evtData->getTimeShutterWindow_L(), 0, frameLength_T); 
+            dProcessingOptions |= ImGui::SliderFloat("Shutter Final (ms)", &evtData->getTimeShutterWindow_R(), 0, frameLength_T);  
+            
+            evtData->getTimeShutterWindow_L() = std::clamp(evtData->getTimeShutterWindow_L(), 0.0f, frameLength_T);
+            evtData->getTimeShutterWindow_R() = std::clamp(evtData->getTimeShutterWindow_R(), evtData->getTimeShutterWindow_L(), frameLength_T);
         }
         else if (evtData->getShutterType() == EventData::EVENT_SHUTTER) {
-            float frameLength_E = evtData->getEventWindow_R() - evtData->getEventWindow_L();
+            uint frameLength_E = evtData->getEventWindow_R() - evtData->getEventWindow_L();
             dProcessingOptions |= ImGui::SliderInt("Shutter Initial (events)", (int *) &evtData->getEventShutterWindow_L(), 0, frameLength_E); 
             dProcessingOptions |= ImGui::SliderInt("Shutter Final (events)", (int *) &evtData->getEventShutterWindow_R(), 0, frameLength_E);   
         
-            evtData->getEventShutterWindow_L() = std::clamp(evtData->getEventShutterWindow_L(), (uint) 0, evtData->getEventWindow_R() - evtData->getEventWindow_L());
-            evtData->getEventShutterWindow_R() = std::clamp(evtData->getEventShutterWindow_R(), evtData->getEventShutterWindow_L(), evtData->getEventWindow_R() - evtData->getEventWindow_L());        
+            evtData->getEventShutterWindow_L() = std::clamp(evtData->getEventShutterWindow_L(), (uint) 0, frameLength_E);
+            evtData->getEventShutterWindow_R() = std::clamp(evtData->getEventShutterWindow_R(), evtData->getEventShutterWindow_L(), frameLength_E);        
         }
         if (dTimeWindow || dEventWindow || dProcessingOptions) { // Ensure internal shutter values match for both options
             if (evtData->getShutterType() == EventData::TIME_SHUTTER) {
-                uint startEvent = evtData->getFirstEvent(evtData->getTimeWindow_L());
-                uint leftEvent = evtData->getFirstEvent(evtData->getTimeWindow_L() + evtData->getTimeShutterWindow_L());
-                uint rightEvent = evtData->getLastEvent(evtData->getTimeWindow_L() + evtData->getTimeShutterWindow_R());
+                uint startEvent = evtData->getFirstEvent(evtData->getTimeWindow_L(), normFactor);
+                uint leftEvent = evtData->getFirstEvent(evtData->getTimeWindow_L() + evtData->getTimeShutterWindow_L(), normFactor);
+                uint rightEvent = evtData->getLastEvent(evtData->getTimeWindow_L() + evtData->getTimeShutterWindow_R(), normFactor);
                 evtData->getEventShutterWindow_L() = leftEvent - startEvent;
                 evtData->getEventShutterWindow_R() = rightEvent - startEvent;
             }
             else if (evtData->getShutterType() == EventData::EVENT_SHUTTER) {
-                float startTime = evtData->getTimestamp(evtData->getEventWindow_L());
-                float leftTime = evtData->getTimestamp(evtData->getEventWindow_L() + evtData->getEventShutterWindow_L());
-                float rightTime = evtData->getTimestamp(evtData->getEventWindow_L() + evtData->getEventShutterWindow_R());
+                float startTime = evtData->getTimestamp(evtData->getEventWindow_L(), normFactor);
+                float leftTime = evtData->getTimestamp(evtData->getEventWindow_L() + evtData->getEventShutterWindow_L(), normFactor);
+                float rightTime = evtData->getTimestamp(evtData->getEventWindow_L() + evtData->getEventShutterWindow_R(), normFactor);
                 evtData->getTimeShutterWindow_L() = leftTime - startTime;
                 evtData->getTimeShutterWindow_R() = rightTime - startTime;
             }
         }
+        evtData->normalizeTime();
+        frameSceneFBO.normalizeTime(evtData->getDiffScale() * EventData::TIME_CONVERSION);
  
         // Auto update controls
         dProcessingOptions |= ImGui::SliderFloat("FPS", &frameSceneFBO.getUpdateFPS(), 0, 100);
