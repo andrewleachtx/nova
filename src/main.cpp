@@ -7,6 +7,18 @@
 
 using namespace std;
 
+// Macros
+#ifdef _WIN32
+    #define popen_macro _popen
+    #define pclose_macro _pclose
+#else
+    #define popen_macro popen
+    #define pclose_macro pclose
+#endif
+
+// Constants
+const string cmd_format{"ffmpeg -y -f rawvideo -pix_fmt rgb24 -s %ux%u -i - -c:v libx264 -pix_fmt yuv420p -vf \"pad=ceil(iw/2)*2:ceil(ih/2)*2, vflip\" -r 30 -preset veryfast %s.mp4"}; // TODO make background process?
+
 // We can pass in a user pointer to callback functions - shouldn't require an updater; vars have inf lifespan
 GLFWwindow *g_window;
 Camera g_camera;
@@ -17,7 +29,13 @@ float g_fps, g_lastRenderTime(0.0f);
 string g_resourceDir, g_dataFilepath;
 
 MainScene g_mainSceneFBO;
-MainScene g_frameSceneFBO; // TODO maybe change class
+FrameScene g_frameSceneFBO;
+
+bool recording;
+string video_name;
+GLuint vid_width, vid_height;
+FILE *ffmpeg;
+vector<unsigned char> pixels;
 
 Mesh g_meshSphere;
 Program g_progScene, g_progInstScene, g_progFrameScene;
@@ -90,7 +108,7 @@ static void init() {
         int width, height;
         glfwGetFramebufferSize(g_window, &width, &height);
         g_mainSceneFBO.initialize(width, height);
-        g_frameSceneFBO.initialize(width, height, true); // TODO consider normalization
+        g_frameSceneFBO.initialize(width, height); // TODO consider GL_RGB32F
 
     GLSL::checkError();
 }
@@ -144,33 +162,70 @@ static void render() {
     MV.popMatrix();
     g_mainSceneFBO.unbind();
 
-    g_frameSceneFBO.bind();
-    glViewport(0, 0, width, height); // TODO change width and height
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glDisable(GL_DEPTH_TEST); // TODO necessary?
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO need depth bit?
+    // Draw Frame // 
+    float nextUpdateTime = t - 1 / g_frameSceneFBO.getUpdateFPS();
+    if (g_frameSceneFBO.getAutoUpdate() != FrameScene::MANUAL_UPDATE && nextUpdateTime >= g_frameSceneFBO.getLastRenderTime()) {
 
-    // Draw Frame //
-        std::vector<glm::vec3> eigenvectors;
-        g_eventData->drawFrame(g_progFrameScene, eigenvectors); 
-            
-        if (g_eventData->getPCA()) { // TODO integrate into drawFrame
-            glBegin(GL_LINES);
-            glVertex3f(eigenvectors[0].x, eigenvectors[0].y, eigenvectors[0].z);
-            glVertex3f(eigenvectors[1].x, eigenvectors[1].y, eigenvectors[1].z);
-            glEnd();
+        if (g_frameSceneFBO.getAutoUpdate() == FrameScene::EVENT_AUTO_UPDATE) {
+            uint framePeriod = g_frameSceneFBO.getFramePeriod_E();
+            uint frameStart = g_eventData->getEventWindow_L();
+            uint frameEnd = g_eventData->getEventWindow_R();
+            uint maxEvent = g_eventData->getMaxEvent() - 1;
+
+            if (frameStart == frameEnd) { // TODO consider breaking when right bound reaches end
+                g_frameSceneFBO.getAutoUpdate() = FrameScene::MANUAL_UPDATE;
+            }
+            else {
+                g_eventData->getEventWindow_L() = glm::min(maxEvent, frameStart + framePeriod);
+                g_eventData->getEventWindow_R() = glm::min(maxEvent, frameEnd + framePeriod);
+                g_eventData->getTimeWindow_L() = g_eventData->getTimestamp(g_eventData->getEventWindow_L());
+                g_eventData->getTimeWindow_R() = g_eventData->getTimestamp(g_eventData->getEventWindow_R());
+            }
         }
+        else if (g_frameSceneFBO.getAutoUpdate() == FrameScene::TIME_AUTO_UPDATE) {
+            float framePeriod = g_frameSceneFBO.getFramePeriod_T();
+            float frameStart = g_eventData->getTimeWindow_L();
+            float frameEnd = g_eventData->getTimeWindow_R();
+            float maxTime = g_eventData->getMaxTimestamp();
 
-    g_frameSceneFBO.unbind();
+            if (frameStart == frameEnd) { // TODO consider breaking when right bound reaches end
+                g_frameSceneFBO.getAutoUpdate() = FrameScene::MANUAL_UPDATE;
+            }
+            else {
+                g_eventData->getTimeWindow_L() = glm::min(maxTime, frameStart + framePeriod);
+                g_eventData->getTimeWindow_R() = glm::min(maxTime, frameEnd + framePeriod);
+                g_eventData->getEventWindow_L() = g_eventData->getFirstEvent(g_eventData->getTimeWindow_L());
+                g_eventData->getEventWindow_R() = g_eventData->getLastEvent(g_eventData->getTimeWindow_R());
+            }
+        }
+        g_frameSceneFBO.setDirtyBit(true); 
+        g_frameSceneFBO.setLastRenderTime(t);
+    }
+
+    if (g_frameSceneFBO.getDirtyBit()) {
+        g_frameSceneFBO.bind();
+        glViewport(0, 0, width, height); 
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glDisable(GL_DEPTH_TEST); // TODO necessary?
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO need depth bit?
+
+            glm::vec2 viewport_resolution(g_frameSceneFBO.getFBOwidth(), g_frameSceneFBO.getFBOheight());
+            g_eventData->drawFrame(g_progFrameScene, viewport_resolution, 
+                g_frameSceneFBO.isMorlet(), g_frameSceneFBO.getFreq(), g_frameSceneFBO.getPCA()); 
+                
+        g_frameSceneFBO.unbind();
+        g_frameSceneFBO.setDirtyBit(false);
+    }
 
     // Build ImGui Docking & Main Viewport //
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         
-        drawGUI(g_camera, g_fps, g_particleScale, g_isMainviewportHovered, g_mainSceneFBO, g_frameSceneFBO, g_eventData, g_dataFilepath);
+        drawGUI(g_camera, g_fps, g_particleScale, g_isMainviewportHovered, g_mainSceneFBO, 
+            g_frameSceneFBO, g_eventData, g_dataFilepath, video_name, recording);
     
     // Render ImGui //
         ImGui::Render();
@@ -187,9 +242,40 @@ static void render() {
     GLSL::checkError(GET_FILE_LINE);
 }
 
+static void video_output() {
+    if (recording) {
+
+        if (ffmpeg == nullptr) { // Check if beginning recording
+            vid_width = g_mainSceneFBO.getFBOwidth();
+            vid_height = g_mainSceneFBO.getFBOheight();
+
+            // Dynamically construct command
+            unsigned int cmd_size = cmd_format.size() + std::to_string(vid_width).size() + 
+                std::to_string(vid_height).size() + video_name.size() - 6; // -6 accounts for each %_
+            char *cmd = new char[cmd_size]; 
+            sprintf(cmd, cmd_format.c_str(), vid_width, vid_height, video_name.c_str());
+
+            ffmpeg = popen_macro(cmd, "wb");
+            if (!ffmpeg) { cerr << "ffmpeg error" << endl; } // TODO add error handling?
+
+            delete[] cmd;
+            pixels.resize(vid_width * vid_height * 3);
+        }
+
+        glReadPixels(0, 0, vid_width, vid_height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data()); 
+        fwrite(pixels.data(), vid_width * vid_height * 3, 1, ffmpeg);
+    }
+    else if (ffmpeg != nullptr) { // Check if recording stopped
+        pclose_macro(ffmpeg);
+        ffmpeg = nullptr;
+    }
+
+}
+
 int main(int argc, char** argv) {
+    // resources/ data/ 
     if (argc < 3) {
-        cout << "Usage: ./NOVA <resource_dir> <data_filepath>" << endl;
+        cout << "Usage: ./NOVA <resource_dir> <data_dir>" << endl;
         return 0;
     }
 
@@ -241,7 +327,6 @@ int main(int argc, char** argv) {
 
     init();
 
-    // FIXME: We shouldn't be doing a strcpy every time there is a render call...
     string curFilepath = g_dataFilepath;
     while (!glfwWindowShouldClose(g_window)) {
         render();
@@ -257,6 +342,8 @@ int main(int argc, char** argv) {
 
         glfwSwapBuffers(g_window);
         glfwPollEvents();
+
+        video_output();
     }
 
     // Cleanup //

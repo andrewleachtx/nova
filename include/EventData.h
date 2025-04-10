@@ -19,6 +19,7 @@
     Because timestamp is an int64_t, we should acknowledge possible truncation when
     converting to float.
 */
+
 class EventData {
     public:
         EventData();
@@ -35,21 +36,42 @@ class EventData {
         void drawInstanced(MatrixStack &MV, MatrixStack &P, Program &prog,
             float particleScale, const glm::vec3 &lightPos, const glm::vec3 &lightColor,
             const BPMaterial &lightMat, const Mesh &meshSphere);
-        void drawFrame(Program &prog, std::vector<glm::vec3> &eigenvectors);
+        void drawFrame(Program &prog, glm::vec2 viewport_resolution, 
+            bool morlet, float freq, bool pca);
 
+        void normalizeTime();
+        void oddizeTime();
+
+        float getTimestamp(uint eventIndex, float oddFactor = 1.0f) const;
+        uint getFirstEvent(float timestamp, float normFactor = 1.0f) const;
+        uint getLastEvent(float timestamp, float normFactor = 1.0f) const;
+
+        const float getDiffScale() const { return diffScale; }
         const glm::vec3 &getCenter() const { return center; }
         const glm::vec3 getMin_XYZ() const { return minXYZ; } // TOOD maybe manipulate window instead
         const glm::vec3 getMax_XYZ() const { return maxXYZ; }
         const float &getMaxTimestamp() const { return maxXYZ.z; }
         const float &getMinTimestamp() const { return minXYZ.z; }
+        const uint getMaxEvent() const { return evtParticles.size(); }
+        
         float &getTimeWindow_L() { return timeWindow_L; }
         float &getTimeWindow_R() { return timeWindow_R; }
-        float &getFrameLength() { return frameLength; }
+        uint &getEventWindow_L() { return eventWindow_L; }
+        uint &getEventWindow_R() { return eventWindow_R; }
         glm::vec4 &getSpaceWindow() { return spaceWindow; }
-        bool &getMorlet() { return morlet; }
-        bool &getPCA() { return pca; }
+        float &getTimeShutterWindow_L() { return timeShutterWindow_L; }
+        float &getTimeShutterWindow_R() { return timeShutterWindow_R; }
+        uint &getEventShutterWindow_L() { return eventShutterWindow_L; }
+        uint &getEventShutterWindow_R() { return eventShutterWindow_R; }
+        int &getShutterType() { return shutterType; }
 
+        static const int TIME_CONVERSION = 1000; // Could be made setable
+        static const int TIME_SHUTTER = 0; // values must match ImGui::Combo order in utils.cpp
+        static const int EVENT_SHUTTER = 1;
     private:
+        glm::vec2 camera_resolution;
+        float diffScale;
+
         // TODO: Might be better to just store a std::bitset for polarity, and something dynamic like a color
         // indicator for a (although we would need a vec3 for a full RGB)
         std::vector<glm::vec4> evtParticles; // x, y, t, polarity (false=0.0, true=1.0)
@@ -60,13 +82,17 @@ class EventData {
 
         float timeWindow_L;
         float timeWindow_R;
-        float frameLength;
+        uint eventWindow_L;
+        uint eventWindow_R;
+
+        // Maybe move to FrameScene or own helper struct
+        int shutterType;
+        float timeShutterWindow_L;
+        float timeShutterWindow_R;
+        uint eventShutterWindow_L;
+        uint eventShutterWindow_R;
 
         glm::vec4 spaceWindow; // x = top, y = right, z = bottom, w = left 
-        
-        // FIXME: Would be helpful to say doMorlet or doPCA to indicate booleanness
-        bool morlet;
-        bool pca;
 
         // We can define a bounding box and thus center to rotate around
         glm::vec3 minXYZ;
