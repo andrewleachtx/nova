@@ -169,7 +169,7 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
     const glm::vec3 &lightPos, const glm::vec3 &lightColor,
     const BPMaterial &lightMat, const Mesh &meshSphere, 
     const Mesh &meshCube) {
-
+        return;
     prog.bind();
     MV.pushMatrix();
         uint rolling = 0;
@@ -199,7 +199,7 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
     prog.unbind();
 }
 
-// start 57, final max
+// start 198, final max
 static inline bool within_inc(uint val, uint left, uint right) {
     return left <= val && val <= right;
 }
@@ -289,17 +289,18 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
     // Load data points
     glBindVertexArray(VAO); 
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, total.size() * sizeof(float), total.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, total.size() * sizeof(float), total.data(), GL_STATIC_DRAW);
 
     prog.bind();
 
     int pos = prog.getAttribute("pos");
-	glVertexAttribPointer(pos, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 	glEnableVertexAttribArray(pos);
+	glVertexAttribPointer(pos, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+    glVertexAttribDivisor(pos, 1);
 
     glm::mat4 projection = glm::ortho(min_XYZ.x, max_XYZ.x, min_XYZ.y, max_XYZ.y);
     glUniformMatrix4fv(prog.getUniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
-    glDrawArrays(GL_POINTS, 0, total.size());
+    glDrawArraysInstanced(GL_POINTS, 0, 1, total.size());
 
     prog.unbind();
 
