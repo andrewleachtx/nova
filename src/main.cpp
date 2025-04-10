@@ -5,10 +5,6 @@
 #include <dv-processing/io/mono_camera_recording.hpp>
 #include <dv-processing/core/frame.hpp>
 
-// TODO: Probably just using namespace std is fine at this point
-using std::cout, std::cerr, std::endl;
-using std::vector, std::string, std::make_shared, std::shared_ptr, std::pair, std::array, std::tuple;
-using std::stoi, std::stoul, std::min, std::max, std::numeric_limits, std::abs;
 using namespace std;
 
 // Macros
@@ -41,9 +37,8 @@ GLuint vid_width, vid_height;
 FILE *ffmpeg;
 vector<unsigned char> pixels;
 
-Mesh g_meshSphere, g_meshSquare, g_meshCube, g_meshWeirdSquare;
-Program g_progScene;
-Program g_progFrameScene;
+Mesh g_meshSphere;
+Program g_progScene, g_progInstScene, g_progFrameScene;
 
 glm::vec3 g_lightPos, g_lightCol;
 BPMaterial g_lightMat;
@@ -51,13 +46,13 @@ BPMaterial g_lightMat;
 // Maybe use unique_ptr
 shared_ptr<EventData> g_eventData;
 
-int g_focusedEvent = -1;
-float g_particleScale(0.35f);
+float g_particleScale(0.75f);
 
-static void setDataAndCamera(){
+static void initEvtDataAndCamera() {
     // Load .aedat events into EventData object //
     g_eventData = make_shared<EventData>();
     g_eventData->initParticlesFromFile(g_dataFilepath);
+    g_eventData->initInstancing(g_progInstScene);
 
     // Camera //
     g_camera = Camera();
@@ -94,19 +89,17 @@ static void init() {
 
         initImGuiStyle(style);
 
-    //initialize data + initialize camera and set it's center//
-        setDataAndCamera();
-
     // Shader Programs //
         g_progScene = genPhongProg(g_resourceDir);
+        g_progInstScene = genInstProg(g_resourceDir);
         g_progFrameScene = genBasicProg(g_resourceDir); 
+
+    // Initialize data + camera and set its center //
+        initEvtDataAndCamera();
 
     // Load Shape(s) & Scene //
         g_meshSphere.loadMesh(g_resourceDir + "sphere.obj");
-        g_meshCube.loadMesh(g_resourceDir + "cube.obj");
-
         g_meshSphere.init();
-        g_meshCube.init();
 
         g_lightPos = glm::vec3(0.0f, 1000.0f, 0.0f);
         g_lightCol = glm::vec3((187 / 255.0f), (178 / 255.0f), (233 / 255.0f));
@@ -154,11 +147,16 @@ static void render() {
     g_camera.applyViewMatrix(MV);
     
     // Draw Main Scene //
-        g_eventData->draw(MV, P, g_progScene,
-                          g_particleScale, g_focusedEvent,
-                          g_lightPos, g_lightCol,
-                          g_lightMat, g_meshSphere,
-                          g_meshCube);
+        // g_eventData->draw(MV, P, g_progScene,
+        //     g_particleScale, g_focusedEvent,
+        //     g_lightPos, g_lightCol,
+        //     g_lightMat, g_meshSphere
+        // );
+        g_eventData->drawInstanced(MV, P, g_progInstScene,
+            g_particleScale,
+            g_lightPos, g_lightCol,
+            g_lightMat, g_meshSphere
+        );
 
     P.popMatrix();
     MV.popMatrix();
@@ -275,8 +273,9 @@ static void video_output() {
 }
 
 int main(int argc, char** argv) {
+    // resources/ data/ 
     if (argc < 3) {
-        cout << "Usage: ./NOVA <resource_dir> <data_filepath>" << endl;
+        cout << "Usage: ./NOVA <resource_dir> <data_dir>" << endl;
         return 0;
     }
 
@@ -290,7 +289,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    // TODO: Can keep for a "fullscreen" mode setting later perhaps
+    // TODO: Can keep for a "fullscreen" mode setting later
     // GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     // const GLFWvidmode* mode = glfwGetVideoMode(monitor);
     // g_window = glfwCreateWindow(mode->width, mode->height, "NOVA", monitor, nullptr);
@@ -326,14 +325,21 @@ int main(int argc, char** argv) {
     glfwSetCharCallback(g_window, char_callback);
     glfwSetFramebufferSizeCallback(g_window, resize_callback);
 
+    /*
+        FIXME: g_dataFilepath not sanitized when init() -> initEvtDataAndCamera() gets called, think
+        about fixing state
+    */
     init();
-    
+
+    string curFilepath = g_dataFilepath;
     while (!glfwWindowShouldClose(g_window)) {
-        string oldfilepath = g_dataFilepath;
         render();
-        if(g_dataFilepath!=oldfilepath){
-            setDataAndCamera();
+        
+        if (g_dataFilepath != curFilepath) {
+            curFilepath = g_dataFilepath;
+            initEvtDataAndCamera();
         }
+
         glfwSwapBuffers(g_window);
         glfwPollEvents();
 
