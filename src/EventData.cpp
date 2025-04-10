@@ -32,7 +32,6 @@ void EventData::reset() {
     center = glm::vec3(0.0f);
     timeWindow_L = -1.0f;
     timeWindow_R = -1.0f;
-    frameLength = 0;
     spaceWindow = glm::vec4(0.0f);
 
     if (instVBO) {
@@ -72,6 +71,7 @@ void EventData::initParticlesFromFile(const std::string &filename) {
             for (auto &evt : events.value()) {
                 long long evtTimestamp = evt.timestamp();
                 if (evtParticles.empty()) {
+                    printf("overwritten\n");
                     earliestTimestamp = evtTimestamp;
                 }
                 
@@ -98,14 +98,15 @@ void EventData::initParticlesFromFile(const std::string &filename) {
 
     // TODO: This is arbitrary, we can should define as a constant somewhere
     // Apply scale
-    this->diffScale = 500.0f / static_cast<float>(lastTimestamp - initTimestamp);
+    // this->diffScale = 500.0f / static_cast<float>(latestTimestamp - earliestTimestamp);
+    this->diffScale = 5000.0f / static_cast<float>(latestTimestamp - earliestTimestamp);
     for (auto &evt : evtParticles) {
-        evt.z *= diff_scale;
+        evt.z *= diffScale;
     }
-    
+
     // Normalize the timestamp of the min/max XYZ for bounding box
-    this->minXYZ.z *= diff_scale;
-    this->maxXYZ.z *= diff_scale;
+    this->minXYZ.z *= diffScale;
+    this->maxXYZ.z *= diffScale;
     this->center = 0.5f * (minXYZ + maxXYZ);
     
     this->spaceWindow = glm::vec4(minXYZ.y, maxXYZ.x, maxXYZ.y, minXYZ.x);
@@ -265,8 +266,8 @@ void EventData::drawInstanced(MatrixStack &MV, MatrixStack &P, Program &prog,
     glVertexAttribDivisor(aInstPos, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    GLSL::checkError();
     prog.unbind();
+    GLSL::checkError();
 }
 
 // I <3 Zelun
@@ -312,7 +313,6 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
             float center_t = timeBound_L + h;
             contributionFunc = new morletFunc(f, h, center_t);
             break;
-
     }
 
     glm::vec2 rolling_sum(0.0f, 0.0f);
@@ -347,7 +347,7 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 	glVertexAttribPointer(pos, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 	glEnableVertexAttribArray(pos);
 
-    glm::mat4 projection = glm::ortho(min_XYZ.x, max_XYZ.x, min_XYZ.y, max_XYZ.y);
+    glm::mat4 projection = glm::ortho(minXYZ.x, maxXYZ.x, minXYZ.y, maxXYZ.y);
     glUniformMatrix4fv(prog.getUniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
     glDrawArrays(GL_POINTS, 0, total.size());
 
@@ -405,8 +405,8 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 
 void EventData::normalizeTime() {
     float factor = diffScale * TIME_CONVERSION;
-    min_XYZ.z *= factor;
-    max_XYZ.z *= factor;
+    minXYZ.z *= factor;
+    maxXYZ.z *= factor;
     timeWindow_L *= factor;
     timeWindow_R *= factor;
     timeShutterWindow_L *= factor;
@@ -415,8 +415,8 @@ void EventData::normalizeTime() {
 
 void EventData::oddizeTime() {
     float factor = diffScale * TIME_CONVERSION;
-    min_XYZ.z /= factor;
-    max_XYZ.z /= factor;
+    minXYZ.z /= factor;
+    maxXYZ.z /= factor;
     timeWindow_L /= factor;
     timeWindow_R /= factor;
     timeShutterWindow_L /= factor;
@@ -424,45 +424,18 @@ void EventData::oddizeTime() {
 }
 
 float EventData::getTimestamp(uint eventIndex, float oddFactor) const {
-    uint rolling = 0;
-    for (size_t i = 0; i < particleBatches.size(); ++i) {
-        size_t batchSize = particleSizes[i];
-
-        // Get event if in batch
-        if (eventIndex - rolling < batchSize) {
-            return particleBatches[i][eventIndex - rolling].z / oddFactor;
-        }
-        rolling += batchSize;
-
-    }
-    std::cerr << "Error: getTimestamp" << std::endl;
-    return -1.0f;
+    return evtParticles[eventIndex].z / oddFactor;
 }
 
 // If timestamp does not exist return first event included in window
 uint EventData::getFirstEvent(float timestamp, float normFactor) const {
     timestamp *= normFactor; 
 
-    uint rolling = 0;
-    float batchTime_L, batchTime_R, t;
-    for (size_t i = 0; i < particleBatches.size(); ++i) {
-        batchTime_L = particleBatches[i][0].z;
-        batchTime_R = particleBatches[i][particleSizes[i] - 1].z;
+    for (size_t i = 0; i < evtParticles.size(); i++) { // TODO binary search?
+        float t = evtParticles[i].z;
 
-        // Skip batch if doesn't contain event
-        if (batchTime_R < timestamp) {
-            rolling += particleSizes[i];
-            continue;
-        }
-
-        // Get event if in batch
-        for (size_t j = 0; j < particleSizes[i]; ++j) { // TODO binary search?
-            t = particleBatches[i][j].z;
-
-            if (t >= timestamp) {
-                return rolling + j;
-            }
-
+        if (t >= timestamp) {
+            return i;
         }
     }
     std::cerr << "Error: getFirstEvent" << std::endl;
@@ -471,28 +444,14 @@ uint EventData::getFirstEvent(float timestamp, float normFactor) const {
 
 // If timestamp does not exist return last event included in window
 uint EventData::getLastEvent(float timestamp, float normFactor) const {
+    assert(this->evtParticles.size() != 0);
     timestamp *= normFactor; 
 
-    uint rolling = 0;
-    float batchTime_L, batchTime_R, t;
-    for (size_t i = particleBatches.size() - 1; i >= 0; --i) {
-        batchTime_L = particleBatches[i][0].z;
-        batchTime_R = particleBatches[i][particleSizes[i] - 1].z;
+    for (size_t i = evtParticles.size() - 1; i >= 0; i--) { // TODO binary search?
+        float t = evtParticles[i].z;
 
-        // Skip batch if doesn't contain event
-        rolling += particleSizes[i];
-        if (timestamp < batchTime_L) {
-            continue;
-        }
-
-        // Get event if in batch 
-        for (size_t j = particleSizes[i] - 1; j >= 0; --j) { // TODO binary search?
-            t = particleBatches[i][j].z;
-
-            if (t <= timestamp) { 
-                return totalEvents - rolling + j;
-            }
-
+        if (t <= timestamp) {
+            return i;
         }
     }
     std::cerr << "Error: getLastEvent" << std::endl;

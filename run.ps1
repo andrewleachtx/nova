@@ -6,5 +6,5 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-./build/Debug/NOVA.exe "./resources" "./data/"
-./build/Release/NOVA.exe "./resources" "./data/"
+# ./build/Debug/NOVA.exe "./resources" "./data/1.5V_withoutpapertowel_2400RPM.aedat4"
+./build/Release/NOVA.exe "./resources" "./data/1.5V_withoutpapertowel_2400RPM.aedat4"

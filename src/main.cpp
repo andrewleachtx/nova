@@ -325,16 +325,16 @@ int main(int argc, char** argv) {
     glfwSetCharCallback(g_window, char_callback);
     glfwSetFramebufferSizeCallback(g_window, resize_callback);
 
+    /*
+        FIXME: g_dataFilepath not sanitized when init() -> initEvtDataAndCamera() gets called, think
+        about fixing state
+    */
     init();
 
     string curFilepath = g_dataFilepath;
     while (!glfwWindowShouldClose(g_window)) {
         render();
         
-        // string oldfilepath = g_dataFilepath;
-        // if(g_dataFilepath!=oldfilepath){
-        //     initEvtDataAndCamera();
-        // }
         if (g_dataFilepath != curFilepath) {
             curFilepath = g_dataFilepath;
             initEvtDataAndCamera();

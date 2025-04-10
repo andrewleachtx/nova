@@ -25,6 +25,9 @@ using std::shared_ptr, std::make_shared;
 using std::vector, std::string;
 using glm::vec3;
 
+// FIXME: Breaks on cancel
+// FIXME: Doesn't throw an error when file doesn't exist
+// FIXME: Remove the argc / argv that takes in a file
 string OpenFileDialog() {
     HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
     if (FAILED(hr)) return "";
