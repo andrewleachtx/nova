@@ -13,7 +13,7 @@ public:
     MainScene();
     ~MainScene();
 
-    bool initialize(int width, int height);
+    bool initialize(int width, int height, bool frame = false);
 
     void resize(int width, int height);
 
@@ -24,6 +24,9 @@ public:
     GLuint getColorTexture() const;
     GLuint getFBOwidth() const { return width; }
     GLuint getFBOheight() const { return height; }
+
+    bool getDirtyBit() { return dirtyBit; }
+    void setDirtyBit(bool x) { dirtyBit = x; }
     
 private:
     GLuint fbo;
@@ -31,4 +34,6 @@ private:
     GLuint depthRBO;
     int width;
     int height;
+
+    bool dirtyBit;
 };
