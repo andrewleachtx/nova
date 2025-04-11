@@ -60,6 +60,7 @@ void EventData::initInstancing(Program &progInst) {
 
 void EventData::initParticlesFromFile(const std::string &filename) {
     dv::io::MonoCameraRecording reader(filename);
+    camera_resolution = glm::vec2(reader.getEventResolution().value().width, reader.getEventResolution().value().height);
     // this->mod_freq = freq;
 
     // If someone calls init again, we should always reset
@@ -71,7 +72,6 @@ void EventData::initParticlesFromFile(const std::string &filename) {
             for (auto &evt : events.value()) {
                 long long evtTimestamp = evt.timestamp();
                 if (evtParticles.empty()) {
-                    printf("overwritten\n");
                     earliestTimestamp = evtTimestamp;
                 }
                 
@@ -339,17 +339,18 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
     // Load data points
     glBindVertexArray(VAO); 
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, total.size() * sizeof(float), total.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, total.size() * sizeof(float), total.data(), GL_STATIC_DRAW);
 
     prog.bind();
 
     int pos = prog.getAttribute("pos");
-	glVertexAttribPointer(pos, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 	glEnableVertexAttribArray(pos);
+	glVertexAttribPointer(pos, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+    glVertexAttribDivisor(pos, 1);
 
     glm::mat4 projection = glm::ortho(minXYZ.x, maxXYZ.x, minXYZ.y, maxXYZ.y);
     glUniformMatrix4fv(prog.getUniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
-    glDrawArrays(GL_POINTS, 0, total.size());
+    glDrawArraysInstanced(GL_POINTS, 0, 1, total.size());
 
     prog.unbind();
 
