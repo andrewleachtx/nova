@@ -31,9 +31,10 @@ public:
 	void init();
 
     void updatePosBuf(const std::vector<glm::vec3>& new_posBuf);
-	void draw(Program& prog, bool indexed=false) const;
+    void draw(Program& prog, bool instanced=false, size_t offset=0, size_t num_instances=0) const;
     const unsigned getPosBufID() const;
     const unsigned getPosBufSize() const;
+    const unsigned getVAOID() const; 
 
     // ! These are not const getters, you could be updating ! //
     std::vector<unsigned int> &getIdxBufRef() { return indexBuf; }
@@ -42,6 +43,7 @@ public:
     
     glm::vec3 getMinXYZ() const { return min_XYZ; }
 	glm::vec3 getMaxXYZ() const { return max_XYZ; }
+
 private:
     // Stores indices of vertices
     std::vector<unsigned int> indexBuf;

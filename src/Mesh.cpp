@@ -171,7 +171,7 @@ void Mesh::updatePosBuf(const std::vector<glm::vec3>& new_posBuf) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void Mesh::draw(Program& prog, bool indexed) const {
+void Mesh::draw(Program& prog, bool instanced, size_t offset, size_t num_instances) const {
 	// Bind position buffer
 	int h_pos = prog.getAttribute("aPos");
 	glEnableVertexAttribArray(h_pos);
@@ -194,15 +194,14 @@ void Mesh::draw(Program& prog, bool indexed) const {
 		glVertexAttribPointer(h_tex, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 	}
 
-    if (indexed) {
-        glBindVertexArray(vaoID);
-        glDrawElements(GL_TRIANGLES, indexBuf.size(), GL_UNSIGNED_INT, (void*)0);
-        glBindVertexArray(0);
+    int idx_ct = (int)posBuf.size() / 3;
+    if (instanced) {
+        glDrawArraysInstanced(GL_TRIANGLES, offset, idx_ct, num_instances);
     }
     else {
-        glDrawArrays(GL_TRIANGLES, 0, (int)(posBuf.size() / 3));
+        glDrawArrays(GL_TRIANGLES, 0, idx_ct);
     }
-
+    
 	// Disable and unbind
 	if(h_tex != -1) {
 	 	glDisableVertexAttribArray(h_tex);
@@ -223,4 +222,8 @@ const unsigned Mesh::getPosBufID() const {
 
 const unsigned Mesh::getPosBufSize() const {
     return posBuf.size();
+}
+
+const unsigned Mesh::getVAOID() const {
+    return vaoID;
 }
