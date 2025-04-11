@@ -60,6 +60,7 @@ void EventData::initInstancing(Program &progInst) {
 
 void EventData::initParticlesFromFile(const std::string &filename) {
     dv::io::MonoCameraRecording reader(filename);
+    camera_resolution = glm::vec2(reader.getEventResolution().value().width, reader.getEventResolution().value().height);
     // this->mod_freq = freq;
 
     // If someone calls init again, we should always reset
@@ -71,7 +72,6 @@ void EventData::initParticlesFromFile(const std::string &filename) {
             for (auto &evt : events.value()) {
                 long long evtTimestamp = evt.timestamp();
                 if (evtParticles.empty()) {
-                    printf("overwritten\n");
                     earliestTimestamp = evtTimestamp;
                 }
                 
