@@ -6,14 +6,5 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# ./build/Debug/NOVA.exe "./resources" "./data/test_data.aedat4"
-# ./build/Debug/NOVA.exe "./resources" "./data/lights.aedat4"
-
-# ./build/Release/NOVA.exe "./resources" "./data/circle.aedat4"
-# ./build/Release/NOVA.exe "./resources" "./data/test_data.aedat4"
-# ./build/Release/NOVA.exe "./resources" "./data/1.5V_withoutpapertowel_2400RPM.aedat4"
-# ./build/Release/NOVA.exe "./resources" "./data/1.5V_withpapertowel.aedat4"
-# ./build/Release/NOVA.exe "./resources" "./data/lights.aedat4"
-# ./build/Release/NOVA.exe "./resources" "./data/circle.aedat4"
-./build/Release/NOVA.exe "./resources" "./data/blinkinglights_5031_97.aedat4"
-# ./build/Release/NOVA.exe "./resources" "./data/RPMTest_1.5V.aedat4"
+# ./build/Debug/NOVA.exe "./resources" "./data/1.5V_withoutpapertowel_2400RPM.aedat4"
+./build/Release/NOVA.exe "./resources" "./data/1.5V_withoutpapertowel_2400RPM.aedat4"
