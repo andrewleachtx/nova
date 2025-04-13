@@ -23,10 +23,11 @@ Camera::Camera() {
     t_factor = 0.001f;
     r_factor = 0.01f;
     zoom_factor = 0.01f;
+    scroll_zoom_factor = 0.1f;
 
     fovy = (45.0f * (float)(M_PI / 180.0f));
     znear = 5.0f;
-    zfar = 10'000.0f;
+    zfar = 100'000.0f;
     
     rotations = glm::vec2(0.0f);
     translations = glm::vec3(0.0f, 0.0f, -10.0f);
@@ -59,6 +60,11 @@ glm::vec3 Camera::calcForward() const {
     return glm::vec3(x, y, z);
 }
 
+void Camera::zoom(float amt) {
+    translations.z *= (1.0f - scroll_zoom_factor * amt);
+    pos -= glm::vec3(translations);
+}
+
 void Camera::mouseClicked(float x, float y, bool shift, bool ctrl, bool alt) {
 	mousePrev.x = x;
 	mousePrev.y = y;
@@ -80,8 +86,19 @@ void Camera::mouseMoved(float x, float y)
 	glm::vec2 dv = mouseCurr - mousePrev;
 	switch (state) {
 		case Camera::ROTATE : {
-			rotations += r_factor * dv;
-			break;
+            // rotations += r_factor * dv;
+
+            // FIXME: Temporary lock to prevent rotation being negated
+                rotations.x += r_factor * dv.x;
+                
+                rotations.y = glm::clamp(
+                    rotations.y + r_factor * dv.y, 
+                    -0.49f * (float)M_PI, 
+                    0.49f * (float)M_PI
+                );
+            // FIXME:
+
+            break;
         }
 		case Camera::TRANSLATE : {
 			translations.x -= translations.z * t_factor * dv.x;
@@ -108,6 +125,17 @@ glm::mat4 Camera::calcLookAt() const {
 
 void Camera::applyProjectionMatrix(MatrixStack& P) const {
 	P.multMatrix(glm::perspective(fovy, aspect, znear, zfar));
+}
+
+void Camera::applyOrthoMatrix(MatrixStack& P) const {
+    float dist = glm::length(pos - evt_center);
+
+    float viewHeight = 2.0f * dist * tan(fovy / 2.0f);
+    float viewWidth = viewHeight * aspect;
+    
+    P.multMatrix(glm::ortho(
+        -viewWidth/2.0f, viewWidth/2.0f, -viewHeight/2.0f, viewHeight/2.0f, znear, zfar
+    ));
 }
 
 void Camera::applyViewMatrix(MatrixStack& MV) const {
