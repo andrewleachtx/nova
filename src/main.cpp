@@ -144,6 +144,7 @@ static void render() {
     P.pushMatrix();
     MV.pushMatrix();
     g_camera.applyProjectionMatrix(P);
+    // g_camera.applyOrthoMatrix(P);
     g_camera.applyViewMatrix(MV);
     
     // Draw Main Scene //
@@ -208,14 +209,14 @@ static void render() {
         g_frameSceneFBO.bind();
         glViewport(0, 0, width, height); 
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glDisable(GL_DEPTH_TEST); // TODO necessary?
+        glDisable(GL_DEPTH_TEST); // TODO necessary? Andrew: Not unless you enable it somewhere else in the loop.
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO need depth bit?
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO need depth bit? Andrew: Good practice to clear buffers, doesn't hurt
 
-            glm::vec2 viewport_resolution(g_frameSceneFBO.getFBOwidth(), g_frameSceneFBO.getFBOheight());
-            g_eventData->drawFrame(g_progFrame, viewport_resolution, 
-                g_frameSceneFBO.isMorlet(), g_frameSceneFBO.getFreq(), g_frameSceneFBO.getPCA()); 
+        glm::vec2 viewport_resolution(g_frameSceneFBO.getFBOwidth(), g_frameSceneFBO.getFBOheight());
+        g_eventData->drawFrame(g_progFrame, viewport_resolution, 
+            g_frameSceneFBO.isMorlet(), g_frameSceneFBO.getFreq(), g_frameSceneFBO.getPCA()); 
                 
         g_frameSceneFBO.unbind();
         g_frameSceneFBO.setDirtyBit(false);
@@ -244,6 +245,7 @@ static void render() {
     GLSL::checkError(GET_FILE_LINE);
 }
 
+// FIXME: Add params and move to utils ?
 static void video_output() {
     if (recording) {
 

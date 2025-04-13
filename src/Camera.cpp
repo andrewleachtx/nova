@@ -116,6 +116,17 @@ void Camera::applyProjectionMatrix(MatrixStack& P) const {
 	P.multMatrix(glm::perspective(fovy, aspect, znear, zfar));
 }
 
+void Camera::applyOrthoMatrix(MatrixStack& P) const {
+    float dist = glm::length(pos - evt_center);
+
+    float viewHeight = 2.0f * dist * tan(fovy / 2.0f);
+    float viewWidth = viewHeight * aspect;
+    
+    P.multMatrix(glm::ortho(
+        -viewWidth/2.0f, viewWidth/2.0f, -viewHeight/2.0f, viewHeight/2.0f, znear, zfar
+    ));
+}
+
 void Camera::applyViewMatrix(MatrixStack& MV) const {
     MV.translate(evt_center);
     MV.translate(translations);

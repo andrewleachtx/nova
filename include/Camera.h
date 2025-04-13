@@ -42,6 +42,7 @@ class Camera {
         glm::mat4 calcLookAt() const;
 
         void applyProjectionMatrix(MatrixStack& P) const;
+        void applyOrthoMatrix(MatrixStack& P) const;
         void applyViewMatrix(MatrixStack& MV) const;
         void applyCameraMatrix(MatrixStack& MV) const;
 
