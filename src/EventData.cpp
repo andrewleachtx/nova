@@ -277,7 +277,7 @@ void EventData::drawInstanced(MatrixStack &MV, MatrixStack &P, Program &progInst
 
     size_t instCt = std::max(1ULL, evtParticles.size() / mod_freq);
 
-    glBindVertexArray(meshSphere.getVAOID());
+    // glBindVertexArray(meshSphere.getVAOID());
 
     glBindBuffer(GL_ARRAY_BUFFER, instVBO);
     GLint aInstPos = progInst.getAttribute("aInstPos");
