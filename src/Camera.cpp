@@ -86,8 +86,19 @@ void Camera::mouseMoved(float x, float y)
 	glm::vec2 dv = mouseCurr - mousePrev;
 	switch (state) {
 		case Camera::ROTATE : {
-			rotations += r_factor * dv;
-			break;
+            // rotations += r_factor * dv;
+
+            // FIXME: Temporary lock to prevent rotation being negated
+                rotations.x += r_factor * dv.x;
+                
+                rotations.y = glm::clamp(
+                    rotations.y + r_factor * dv.y, 
+                    -0.49f * (float)M_PI, 
+                    0.49f * (float)M_PI
+                );
+            // FIXME:
+
+            break;
         }
 		case Camera::TRANSLATE : {
 			translations.x -= translations.z * t_factor * dv.x;
