@@ -38,7 +38,7 @@ FILE *ffmpeg;
 vector<unsigned char> pixels;
 
 Mesh g_meshSphere;
-Program g_progScene, g_progInstScene, g_progFrameScene;
+Program g_progBasic, g_progInst, g_progFrame;
 
 glm::vec3 g_lightPos, g_lightCol;
 BPMaterial g_lightMat;
@@ -52,7 +52,7 @@ static void initEvtDataAndCamera() {
     // Load .aedat events into EventData object //
     g_eventData = make_shared<EventData>();
     g_eventData->initParticlesFromFile(g_dataFilepath);
-    g_eventData->initInstancing(g_progInstScene);
+    g_eventData->initInstancing(g_progInst);
 
     // Camera //
     g_camera = Camera();
@@ -90,9 +90,9 @@ static void init() {
         initImGuiStyle(style);
 
     // Shader Programs //
-        g_progScene = genPhongProg(g_resourceDir);
-        g_progInstScene = genInstProg(g_resourceDir);
-        g_progFrameScene = genBasicProg(g_resourceDir); 
+        g_progBasic = genPhongProg(g_resourceDir);
+        g_progInst = genInstProg(g_resourceDir);
+        g_progFrame = genBasicProg(g_resourceDir); 
 
     // Initialize data + camera and set its center //
         initEvtDataAndCamera();
@@ -147,13 +147,13 @@ static void render() {
     g_camera.applyViewMatrix(MV);
     
     // Draw Main Scene //
-        // g_eventData->draw(MV, P, g_progScene,
+        // g_eventData->draw(MV, P, g_progBasic,
         //     g_particleScale, g_focusedEvent,
         //     g_lightPos, g_lightCol,
         //     g_lightMat, g_meshSphere
         // );
-        g_eventData->drawInstanced(MV, P, g_progInstScene,
-            g_particleScale,
+        g_eventData->drawInstanced(MV, P, g_progInst,
+            g_progBasic, g_particleScale,
             g_lightPos, g_lightCol,
             g_lightMat, g_meshSphere
         );
@@ -163,6 +163,8 @@ static void render() {
     g_mainSceneFBO.unbind();
 
     // Draw Frame // 
+    // FIXME: make method for this i.e. g_eventData->drawDCEFrame() ? render() easily gets bloated, this is fine though if we
+    // don't have many more
     float nextUpdateTime = t - 1 / g_frameSceneFBO.getUpdateFPS();
     if (g_frameSceneFBO.getAutoUpdate() != FrameScene::MANUAL_UPDATE && nextUpdateTime >= g_frameSceneFBO.getLastRenderTime()) {
 
@@ -212,7 +214,7 @@ static void render() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO need depth bit?
 
             glm::vec2 viewport_resolution(g_frameSceneFBO.getFBOwidth(), g_frameSceneFBO.getFBOheight());
-            g_eventData->drawFrame(g_progFrameScene, viewport_resolution, 
+            g_eventData->drawFrame(g_progFrame, viewport_resolution, 
                 g_frameSceneFBO.isMorlet(), g_frameSceneFBO.getFreq(), g_frameSceneFBO.getPCA()); 
                 
         g_frameSceneFBO.unbind();

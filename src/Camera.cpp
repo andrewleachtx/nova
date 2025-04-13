@@ -23,10 +23,11 @@ Camera::Camera() {
     t_factor = 0.001f;
     r_factor = 0.01f;
     zoom_factor = 0.01f;
+    scroll_zoom_factor = 0.1f;
 
     fovy = (45.0f * (float)(M_PI / 180.0f));
     znear = 5.0f;
-    zfar = 10'000.0f;
+    zfar = 100'000.0f;
     
     rotations = glm::vec2(0.0f);
     translations = glm::vec3(0.0f, 0.0f, -10.0f);
@@ -57,6 +58,11 @@ glm::vec3 Camera::calcForward() const {
     z = (float)(sin(yaw) * cos(pitch));
 
     return glm::vec3(x, y, z);
+}
+
+void Camera::zoom(float amt) {
+    translations.z *= (1.0f - scroll_zoom_factor * amt);
+    pos -= glm::vec3(translations);
 }
 
 void Camera::mouseClicked(float x, float y, bool shift, bool ctrl, bool alt) {

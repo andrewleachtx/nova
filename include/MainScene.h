@@ -8,6 +8,7 @@
 
     This way main.cpp isn't flooded with more boilerplate.
 */
+// TODO: Best renamed to just FBOWrapper or FBO
 class MainScene {
 public:
     MainScene();

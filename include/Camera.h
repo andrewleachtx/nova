@@ -35,6 +35,7 @@ class Camera {
         void setForward(const glm::vec3 &dir);
         glm::vec3 calcForward() const;
 
+        void zoom(float amt);
         void mouseClicked(float x, float y, bool shift, bool ctrl, bool alt);
         void mouseMoved(float x, float y);
 
@@ -53,6 +54,7 @@ class Camera {
         float t_factor;
         float r_factor;
         float zoom_factor;
+        float scroll_zoom_factor;
 
         float fovy;
         float znear;

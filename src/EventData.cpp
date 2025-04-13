@@ -113,7 +113,7 @@ void EventData::initParticlesFromFile(const std::string &filename) {
 }
 
 // TODO: Move precalculable things to an init
-void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &prog) {
+void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &progBasic) {
     const glm::vec3 &scaled_minXYZ = minXYZ; 
     const glm::vec3 &scaled_maxXYZ = maxXYZ;
     
@@ -168,7 +168,7 @@ void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Progra
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     
-    prog.bind();
+    progBasic.bind();
     MV.pushMatrix();
     
     // TODO: Can change, for now white
@@ -179,11 +179,11 @@ void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Progra
     mat_line.ks = color_line;
     mat_line.s = 10.0f;
     
-    sendToPhongShader(prog, P, MV, glm::vec3(0.0f), color_line, mat_line);
+    sendToPhongShader(progBasic, P, MV, glm::vec3(0.0f), color_line, mat_line);
     glDrawArrays(GL_LINES, 0, (GLsizei)line_posbuf.size() / 3);
     
     MV.popMatrix();
-    prog.unbind();
+    progBasic.unbind();
     
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -220,7 +220,7 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
     prog.unbind();
 }
 
-void EventData::drawInstanced(MatrixStack &MV, MatrixStack &P, Program &prog,
+void EventData::drawInstanced(MatrixStack &MV, MatrixStack &P, Program &progInst, Program &progBasic,
     float particleScale, const glm::vec3 &lightPos, const glm::vec3 &lightColor,
     const BPMaterial &lightMat, const Mesh &meshSphere) {
     
@@ -233,7 +233,7 @@ void EventData::drawInstanced(MatrixStack &MV, MatrixStack &P, Program &prog,
     glBindVertexArray(meshSphere.getVAOID());
 
     glBindBuffer(GL_ARRAY_BUFFER, instVBO);
-    GLint aInstPos = prog.getAttribute("aInstPos");
+    GLint aInstPos = progInst.getAttribute("aInstPos");
     if (aInstPos >= 0) {
         glEnableVertexAttribArray(aInstPos);
         glVertexAttribPointer(aInstPos, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), nullptr);
@@ -245,14 +245,14 @@ void EventData::drawInstanced(MatrixStack &MV, MatrixStack &P, Program &prog,
     }
 
     // Send uniforms to GPU/shader
-    prog.bind();
-    glUniformMatrix4fv(prog.getUniform("P"), 1, GL_FALSE, glm::value_ptr(P.topMatrix()));
-    glUniformMatrix4fv(prog.getUniform("MV"), 1, GL_FALSE, glm::value_ptr(MV.topMatrix()));
-    glUniformMatrix4fv(prog.getUniform("MV_it"), 1, GL_FALSE, 
+    progInst.bind();
+    glUniformMatrix4fv(progInst.getUniform("P"), 1, GL_FALSE, glm::value_ptr(P.topMatrix()));
+    glUniformMatrix4fv(progInst.getUniform("MV"), 1, GL_FALSE, glm::value_ptr(MV.topMatrix()));
+    glUniformMatrix4fv(progInst.getUniform("MV_it"), 1, GL_FALSE, 
                       glm::value_ptr(glm::inverse(glm::transpose(MV.topMatrix()))));
-    glUniform3fv(prog.getUniform("lightPos"), 1, glm::value_ptr(lightPos));
-    glUniform3fv(prog.getUniform("lightCol"), 1, glm::value_ptr(lightColor));
-    glUniform1f(prog.getUniform("particleScale"), particleScale);
+    glUniform3fv(progInst.getUniform("lightPos"), 1, glm::value_ptr(lightPos));
+    glUniform3fv(progInst.getUniform("lightCol"), 1, glm::value_ptr(lightColor));
+    glUniform1f(progInst.getUniform("particleScale"), particleScale);
     
     // meshSphere.draw(prog, true, 0, instCt);
     glPointSize((GLfloat)particleScale);
@@ -264,8 +264,13 @@ void EventData::drawInstanced(MatrixStack &MV, MatrixStack &P, Program &prog,
     glDisableVertexAttribArray(aInstPos);
     glVertexAttribDivisor(aInstPos, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    progInst.unbind();
+    GLSL::checkError();
 
-    prog.unbind();
+    // Draw bounding box / wireframe
+    drawBoundingBoxWireframe(MV, P, progBasic);
+
     GLSL::checkError();
 }
 
