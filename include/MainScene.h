@@ -8,6 +8,7 @@
 
     This way main.cpp isn't flooded with more boilerplate.
 */
+// TODO: Best renamed to just FBOWrapper or FBO
 class MainScene {
 public:
     MainScene();
@@ -24,6 +25,9 @@ public:
     GLuint getColorTexture() const;
     GLuint getFBOwidth() const { return width; }
     GLuint getFBOheight() const { return height; }
+
+    bool getDirtyBit() { return dirtyBit; }
+    void setDirtyBit(bool x) { dirtyBit = x; }
     
 private:
     GLuint fbo;
@@ -31,4 +35,6 @@ private:
     GLuint depthRBO;
     int width;
     int height;
+
+    bool dirtyBit;
 };
