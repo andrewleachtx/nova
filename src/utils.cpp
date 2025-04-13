@@ -260,6 +260,8 @@ void resize_callback(GLFWwindow *window, int width, int height) {
     // Update the FBO
     wc->mainSceneFBO->resize(width, height);
     wc->frameSceneFBO->resize(width, height);
+    wc->mainSceneFBO->setDirtyBit(true);
+    wc->frameSceneFBO->setDirtyBit(true);
 }
 
 // Looks for the biggest monitor
@@ -490,12 +492,11 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
 
         ImVec2 final_sz;
         if (fbo_aspect > img_aspect) {
-            // Effectively the height is the limiting factor here, so we should max height and adjust width
-            final_sz = ImVec2(image_sz.x * fbo_aspect, image_sz.x);
-        }
-        else {
-            // Width limiting factor, adjust height
+            // Width is fixed, adjust height
             final_sz = ImVec2(image_sz.x, image_sz.x / fbo_aspect);
+        } else {
+            // Height is fixed, adjust width
+            final_sz = ImVec2(image_sz.y * fbo_aspect, image_sz.y);
         }
 
         ImGui::Image((ImTextureID)mainSceneFBO.getColorTexture(), final_sz, ImVec2(0, 1), ImVec2(1, 0));

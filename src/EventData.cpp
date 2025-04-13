@@ -71,7 +71,6 @@ void EventData::initParticlesFromFile(const std::string &filename) {
             for (auto &evt : events.value()) {
                 long long evtTimestamp = evt.timestamp();
                 if (evtParticles.empty()) {
-                    printf("overwritten\n");
                     earliestTimestamp = evtTimestamp;
                 }
                 
@@ -98,7 +97,6 @@ void EventData::initParticlesFromFile(const std::string &filename) {
 
     // TODO: This is arbitrary, we can should define as a constant somewhere
     // Apply scale
-    // this->diffScale = 500.0f / static_cast<float>(latestTimestamp - earliestTimestamp);
     this->diffScale = 5000.0f / static_cast<float>(latestTimestamp - earliestTimestamp);
     for (auto &evt : evtParticles) {
         evt.z *= diffScale;
@@ -192,6 +190,7 @@ void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Progra
     glLineWidth(1.0f);
 }
 
+/* THIS IS WITHOUT INSTANCING; DEPRECATED */
 void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
     float particleScale, const glm::vec3 &lightPos, const glm::vec3 &lightColor,
     const BPMaterial &lightMat, const Mesh &meshSphere) { 
