@@ -13,7 +13,7 @@ static float contribution = 0.15f;
 class BaseFunc {
     public:
         BaseFunc() {};
-        virtual ~BaseFunc() {};
+        virtual ~BaseFunc() = default;
 
         void setX(float val) { x = val; };
         void setY(float val) { y = val; };
@@ -33,7 +33,7 @@ class BaseFunc {
 class morletFunc: public BaseFunc {
     public:
         morletFunc(float f, float h, float center_t): BaseFunc(), f(f), h(h), center_t(center_t) {};
-        ~morletFunc() override {};
+        ~morletFunc() override = default;
 
         float getWeight() const override { 
             auto complex_result = std::exp(2.0f * std::complex<float>(0.0f, 1.0f) * std::acos(-1.0f) * f * (t - center_t)) * 

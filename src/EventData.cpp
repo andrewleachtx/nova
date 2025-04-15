@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <dv-processing/core/utils.hpp>
+#include <omp.h>
 
 using std::vector, std::cout, std::endl;
 
@@ -282,7 +283,7 @@ static inline bool within_inc(uint val, uint left, uint right) {
 
 void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool morlet, float freq, bool pca) {
     float timeBound_L, timeBound_R; 
-    uint eventBound_L, eventBound_R;
+    int eventBound_L, eventBound_R;
 
     // Set up point size
     float aspectWidth = viewport_resolution.x / static_cast<float>(camera_resolution.x);
@@ -304,43 +305,48 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
     eventBound_L = eventWindow_L + eventShutterWindow_L;
     eventBound_R = eventWindow_L + eventShutterWindow_R;
 
-    // Select contribution function
-    BaseFunc *contributionFunc = nullptr;
-    int choice = morlet ? 1 : 0; // Can be expanded for new contribution functions
-    switch (choice) {
-        case 0:
-            contributionFunc = new BaseFunc();
-            break;
+    float rollingX(0), rollingY(0);
+    std::vector<float> total((eventBound_R - eventBound_L + 1) * 3);
+    #pragma omp parallel
+    {
+        // Select contribution function
+        std::shared_ptr<BaseFunc> contributionFunc = nullptr;
+        int choice = morlet ? 1 : 0; // Can be expanded for new contribution functions
+        switch (choice) {
+            case 0:
+                contributionFunc = std::make_shared<BaseFunc>();
+                break;
 
-        case 1: 
-            float f = freq / 1000000 / diffScale;
-            float h = (timeBound_R - timeBound_L) / 2; // Very rough full width at half maximum
-            float center_t = timeBound_L + h;
-            contributionFunc = new morletFunc(f, h, center_t);
-            break;
-    }
+            case 1: 
+                float f = freq / 1000000 / diffScale;
+                float h = (timeBound_R - timeBound_L) / 2; // Very rough full width at half maximum
+                float center_t = timeBound_L + h;
+                contributionFunc = std::make_shared<morletFunc>(f, h, center_t);
+                break;
+        }
 
-    glm::vec2 rolling_sum(0.0f, 0.0f);
-    std::vector<float> total;
-    for (size_t i = eventBound_L; i <= eventBound_R; ++i) {
-        float x(evtParticles[i].x), y(evtParticles[i].y), t(evtParticles[i].z);
-        float polarity = evtParticles[i].w;
+        #pragma omp for reduction(+ : rollingX) reduction(+ : rollingY)
+        for (int i = eventBound_L; i <= eventBound_R; ++i) {
+            float x(evtParticles[i].x), y(evtParticles[i].y), t(evtParticles[i].z);
+            float polarity = evtParticles[i].w;
 
-        contributionFunc->setX(x);
-        contributionFunc->setY(y);
-        contributionFunc->setT(t);
-        contributionFunc->setPolarity(polarity);
-        
-        if (within_inc(x, spaceWindow.w, spaceWindow.y) && within_inc(y, spaceWindow.x, spaceWindow.z)) {
-            total.push_back(x);
-            total.push_back(y);
-            total.push_back(contributionFunc->getWeight());
+            contributionFunc->setX(x);
+            contributionFunc->setY(y);
+            contributionFunc->setT(t);
+            contributionFunc->setPolarity(polarity);
+            
+            if (within_inc(x, spaceWindow.w, spaceWindow.y) && within_inc(y, spaceWindow.x, spaceWindow.z)) {
+                size_t index = (i - eventBound_L) * 3;
+                total[index] = x;
+                total[index + 1] = y;
+                total[index + 2] = contributionFunc->getWeight();
 
-            rolling_sum.x += x;
-            rolling_sum.y += y;
+                rollingX += x;
+                rollingY += y;
+            }
         }
     }
-
+ 
     // Load data points
     glBindVertexArray(VAO); 
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -361,14 +367,13 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 
     glBindVertexArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-    delete contributionFunc;
 
     if (pca) {
         // Calculate covariance
 
         // TODO: inverse change? (make sure to always update when new files are used)
-        float mean_x = rolling_sum.x / (total.size() / 3);
-        float mean_y = rolling_sum.y / (total.size() / 3);
+        float mean_x = rollingX / (total.size() / 3);
+        float mean_y = rollingY / (total.size() / 3);
 
         float cov_x_x(0.0f), cov_x_y(0.0f), cov_y_y(0.0f);
         for (size_t i = 0; i < total.size(); i += 3) {
