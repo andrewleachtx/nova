@@ -120,8 +120,8 @@ void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Progra
     const glm::vec3 &scaled_maxXYZ = maxXYZ;
     
     glLineWidth(2.0f);
-    
-    glm::vec3 corners[8] = {
+
+    glm::vec3 corners[16] = {
         { scaled_minXYZ.x, scaled_minXYZ.y, scaled_minXYZ.z },
         { scaled_maxXYZ.x, scaled_minXYZ.y, scaled_minXYZ.z },
         { scaled_maxXYZ.x, scaled_maxXYZ.y, scaled_minXYZ.z },
@@ -129,13 +129,26 @@ void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Progra
         { scaled_minXYZ.x, scaled_minXYZ.y, scaled_maxXYZ.z },
         { scaled_maxXYZ.x, scaled_minXYZ.y, scaled_maxXYZ.z },
         { scaled_maxXYZ.x, scaled_maxXYZ.y, scaled_maxXYZ.z },
-        { scaled_minXYZ.x, scaled_maxXYZ.y, scaled_maxXYZ.z }
+        { scaled_minXYZ.x, scaled_maxXYZ.y, scaled_maxXYZ.z },
+        { spaceWindow.w, spaceWindow.x, timeWindow_L },
+        { spaceWindow.y, spaceWindow.x, timeWindow_L },
+        { spaceWindow.y, spaceWindow.z, timeWindow_L },
+        { spaceWindow.w, spaceWindow.z, timeWindow_L },
+        { spaceWindow.w, spaceWindow.x, timeWindow_R },
+        { spaceWindow.y, spaceWindow.x, timeWindow_R },
+        { spaceWindow.y, spaceWindow.z, timeWindow_R },
+        { spaceWindow.w, spaceWindow.z, timeWindow_R }
     };
 
-    int edges[12][2] = {
+
+    int edges[24][2] = {
         {0,1}, {1,2}, {2,3}, {3,0},
         {4,5}, {5,6}, {6,7}, {7,4},
-        {0,4}, {1,5}, {2,6}, {3,7}
+        {0,4}, {1,5}, {2,6}, {3,7},
+
+        {8,9},   {9,10},  {10,11}, {11,8},
+        {12,13}, {13,14}, {14,15}, {15,12},
+        {8,12},  {9,13},  {10,14}, {11,15}
     };
 
     // Instead of immediate mode use VBOs
@@ -149,8 +162,9 @@ void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Progra
     }
     
     // Buffer for x0, y0, z0, x1, y1, ... of each line segment
-    static std::vector<float> line_posbuf(12 * 2 * 3);
-    for (int i = 0; i < 12; i++) {
+    static std::vector<float> line_posbuf(24 * 2 * 3); // TODO static?
+    line_posbuf.clear();
+    for (int i = 0; i < 24; i++) {
         // Starting XYZ
         line_posbuf.push_back(corners[edges[i][0]].x);
         line_posbuf.push_back(corners[edges[i][0]].y);
@@ -172,7 +186,7 @@ void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Progra
     
     progBasic.bind();
     MV.pushMatrix();
-    
+
     // TODO: Can change, for now white
     glm::vec3 color_line(1.0f, 1.0f, 1.0f);
     BPMaterial mat_line;
