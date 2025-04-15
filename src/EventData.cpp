@@ -433,34 +433,31 @@ float EventData::getTimestamp(uint eventIndex, float oddFactor) const {
     return evtParticles[eventIndex].z / oddFactor;
 }
 
+inline bool lessVec4_t(const glm::vec4& a, const glm::vec4& b) {
+    return a.z < b.z;
+}
+
 // If timestamp does not exist return first event included in window
 uint EventData::getFirstEvent(float timestamp, float normFactor) const {
-    timestamp *= normFactor; 
+    assert(this->evtParticles.size() != 0);
+    glm::vec4 timestampVec4(0.0f, 0.0f, timestamp * normFactor, 0.0f); 
 
-    for (size_t i = 0; i < evtParticles.size(); i++) { // TODO binary search?
-        float t = evtParticles[i].z;
-
-        if (t >= timestamp) {
-            return i;
-        }
+    auto lb = std::lower_bound(evtParticles.begin(), evtParticles.end(), timestampVec4, lessVec4_t);
+    if (lb == evtParticles.end()) {
+        return evtParticles.size() - 1;
     }
-    std::cerr << "Error: getFirstEvent" << std::endl;
-    return std::numeric_limits<uint>::max();
+    return std::distance(evtParticles.begin(), lb);
 } 
 
 // If timestamp does not exist return last event included in window
 uint EventData::getLastEvent(float timestamp, float normFactor) const {
     assert(this->evtParticles.size() != 0);
-    timestamp *= normFactor; 
+    glm::vec4 timestampVec4(0.0f, 0.0f, timestamp * normFactor, 0.0f); 
 
-    for (size_t i = evtParticles.size() - 1; i >= 0; i--) { // TODO binary search?
-        float t = evtParticles[i].z;
-
-        if (t <= timestamp) {
-            return i;
-        }
+    auto ub = std::upper_bound(evtParticles.begin(), evtParticles.end(), timestampVec4, lessVec4_t);
+    if (ub == evtParticles.begin()) {
+        return 0;
     }
-    std::cerr << "Error: getLastEvent" << std::endl;
-    return std::numeric_limits<uint>::max();
+    return std::distance(evtParticles.begin(), --ub);
 }
 
