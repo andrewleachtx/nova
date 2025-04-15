@@ -380,9 +380,9 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
             cov_y_y += (y - mean_y) * (y - mean_y);
         }
 
-        cov_x_y /= (total.size() / 3 - 1);
-        cov_x_x /= (total.size() / 3 - 1);
-        cov_y_y /= (total.size() / 3 - 1);
+        cov_x_y /= (total.size() / (3 - 1));
+        cov_x_x /= (total.size() / (3 - 1));
+        cov_y_y /= (total.size() / (3 - 1));
 
         // Matrix
         float a = 1;
@@ -394,14 +394,27 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 
         // Eigen vectors
         std::vector<glm::vec3> eigenvectors;
-        eigenvectors.push_back(glm::normalize(glm::vec3(eigen1 - cov_y_y, cov_x_y, 1)));
-        eigenvectors.push_back(glm::normalize(glm::vec3(eigen2 - cov_y_y, cov_x_y, 1)));
+        eigenvectors.push_back(std::sqrt(eigen1) * glm::normalize(glm::vec3(eigen1 - cov_y_y, cov_x_y, 1))); 
+        eigenvectors.push_back(std::sqrt(eigen2) * glm::normalize(glm::vec3(eigen2 - cov_y_y, cov_x_y, 1))); 
+
+        // define position of mean and eigenvectors in cameraview 
+        glm::vec4 mean_cameraspace(mean_x, mean_y, 1.f, 1.f);
+        mean_cameraspace = projection * mean_cameraspace;
+        eigenvectors.at(0) = projection * glm::vec4(eigenvectors.at(0).x, eigenvectors.at(0).y, 0.f, 0.f);
+        eigenvectors.at(1) = projection * glm::vec4(eigenvectors.at(1).x, eigenvectors.at(1).y, 0.f, 0.f);
+
+        // add initial position to eigenvalues
+        eigenvectors.at(0) += glm::vec3(mean_cameraspace);
+        eigenvectors.at(1) += glm::vec3(mean_cameraspace);
 
         glBegin(GL_LINES);
-        glVertex3f(0, 0, 1);
-        glVertex3f(eigenvectors[0].x, eigenvectors[0].y, eigenvectors[0].z);
-        glVertex3f(0, 0, 1);
-        glVertex3f(eigenvectors[1].x, eigenvectors[1].y, eigenvectors[1].z);
+        //glLineWidth(2);
+        glColor3f(1.f, 0.f, 0.f);
+        glVertex3f(mean_cameraspace.x, mean_cameraspace.y, mean_cameraspace.z);
+        glVertex3f(eigenvectors[0].x, eigenvectors[0].y, 1.f);
+        glColor3f(0.f, 1.f, 0.f);
+        glVertex3f(mean_cameraspace.x, mean_cameraspace.y, mean_cameraspace.z);
+        glVertex3f(eigenvectors[1].x, eigenvectors[1].y, 1.f);
         glEnd();
 
     }
