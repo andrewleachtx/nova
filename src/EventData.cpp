@@ -14,7 +14,7 @@ EventData::EventData() : camera_resolution(0.0f), diffScale(0.0f), mod_freq(1),
     timeWindow_L(0.0f), timeWindow_R(0.0f), eventWindow_L(0), eventWindow_R(0),
     timeShutterWindow_L(0.0f), timeShutterWindow_R(0.0f), eventShutterWindow_L(0),
     eventShutterWindow_R(0), spaceWindow(0.0f), minXYZ(std::numeric_limits<float>::max()),
-    maxXYZ(std::numeric_limits<float>::lowest()), center(0.0f) {}
+    maxXYZ(std::numeric_limits<float>::lowest()), center(0.0f), negColor({1.0f, 0.0f, 0.0f}), posColor({0.0f, 1.0f, 0.0f}) {}
 
 EventData::~EventData() {
     if (instVBO) {
@@ -255,7 +255,9 @@ void EventData::drawInstanced(MatrixStack &MV, MatrixStack &P, Program &progInst
     glUniform3fv(progInst.getUniform("lightPos"), 1, glm::value_ptr(lightPos));
     glUniform3fv(progInst.getUniform("lightCol"), 1, glm::value_ptr(lightColor));
     glUniform1f(progInst.getUniform("particleScale"), particleScale);
-    
+    glUniform3fv(progInst.getUniform("negColor"), 1, glm::value_ptr(negColor));
+    glUniform3fv(progInst.getUniform("posColor"), 1, glm::value_ptr(posColor));
+
     // meshSphere.draw(prog, true, 0, instCt);
     glPointSize((GLfloat)particleScale);
     glEnable(GL_POINT_SMOOTH);
@@ -307,6 +309,7 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 
     float rollingX(0), rollingY(0);
     std::vector<float> total((eventBound_R - eventBound_L + 1) * 3);
+    float f = freq / 1000000 / diffScale; // Not always needed but moved outside of threading to reduce divisions
     #pragma omp parallel
     {
         // Select contribution function
@@ -318,8 +321,7 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
                 break;
 
             case 1: 
-                float f = freq / 1000000 / diffScale;
-                float h = (timeBound_R - timeBound_L) / 2; // Very rough full width at half maximum
+                float h = (timeBound_R - timeBound_L) * 0.5; // Very rough full width at half maximum
                 float center_t = timeBound_L + h;
                 contributionFunc = std::make_shared<morletFunc>(f, h, center_t);
                 break;
@@ -361,7 +363,7 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 
     glm::mat4 projection = glm::ortho(minXYZ.x, maxXYZ.x, minXYZ.y, maxXYZ.y);
     glUniformMatrix4fv(prog.getUniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
-    glDrawArraysInstanced(GL_POINTS, 0, 1, total.size());
+    glDrawArraysInstanced(GL_POINTS, 0, 1, static_cast<GLsizei>(total.size()));
 
     prog.unbind();
 
@@ -372,8 +374,9 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
         // Calculate covariance
 
         // TODO: inverse change? (make sure to always update when new files are used)
-        float mean_x = rollingX / (total.size() / 3);
-        float mean_y = rollingY / (total.size() / 3);
+        size_t inverseNumElems = 1 / total.size() / 3;
+        float mean_x = rollingX * inverseNumElems;
+        float mean_y = rollingY * inverseNumElems;
 
         float cov_x_x(0.0f), cov_x_y(0.0f), cov_y_y(0.0f);
         for (size_t i = 0; i < total.size(); i += 3) {
@@ -385,9 +388,10 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
             cov_y_y += (y - mean_y) * (y - mean_y);
         }
 
-        cov_x_y /= (total.size() / 3 - 1);
-        cov_x_x /= (total.size() / 3 - 1);
-        cov_y_y /= (total.size() / 3 - 1);
+        inverseNumElems = 1 / (total.size() / 3 - 1);
+        cov_x_y *= inverseNumElems;
+        cov_x_x *= inverseNumElems;
+        cov_y_y *= inverseNumElems;
 
         // Matrix
         float a = 1;
@@ -449,7 +453,7 @@ uint EventData::getFirstEvent(float timestamp, float normFactor) const {
 
     auto lb = std::lower_bound(evtParticles.begin(), evtParticles.end(), timestampVec4, lessVec4_t);
     if (lb == evtParticles.end()) {
-        return evtParticles.size() - 1;
+        return static_cast<uint>(evtParticles.size() - 1);
     }
     return std::distance(evtParticles.begin(), lb);
 } 
@@ -465,4 +469,3 @@ uint EventData::getLastEvent(float timestamp, float normFactor) const {
     }
     return std::distance(evtParticles.begin(), --ub);
 }
-

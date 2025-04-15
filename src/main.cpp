@@ -254,8 +254,8 @@ static void video_output() {
             vid_height = g_mainSceneFBO.getFBOheight();
 
             // Dynamically construct command
-            unsigned int cmd_size = cmd_format.size() + std::to_string(vid_width).size() + 
-                std::to_string(vid_height).size() + video_name.size() - 6; // -6 accounts for each %_
+            unsigned int cmd_size = static_cast<unsigned int>(cmd_format.size() + std::to_string(vid_width).size() + 
+                std::to_string(vid_height).size() + video_name.size() - 6); // -6 accounts for each %_
             char *cmd = new char[cmd_size]; 
             sprintf(cmd, cmd_format.c_str(), vid_width, vid_height, video_name.c_str());
 
