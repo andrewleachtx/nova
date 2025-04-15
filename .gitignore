@@ -39,4 +39,6 @@ output/
 *.zip
 *.tar.gz
 linux/
-win32/.DS_Store
+win32/
+
+.DS_Store

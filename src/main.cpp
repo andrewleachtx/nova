@@ -5,10 +5,6 @@
 #include <dv-processing/io/mono_camera_recording.hpp>
 #include <dv-processing/core/frame.hpp>
 
-// TODO: Probably just using namespace std is fine at this point
-using std::cout, std::cerr, std::endl;
-using std::vector, std::string, std::make_shared, std::shared_ptr, std::pair, std::array, std::tuple;
-using std::stoi, std::stoul, std::min, std::max, std::numeric_limits, std::abs;
 using namespace std;
 
 // We can pass in a user pointer to callback functions - shouldn't require an updater; vars have inf lifespan
