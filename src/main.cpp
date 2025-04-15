@@ -208,7 +208,7 @@ static void render() {
     if (g_frameSceneFBO.getDirtyBit()) {
         g_frameSceneFBO.bind();
         glViewport(0, 0, width, height); 
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glDisable(GL_DEPTH_TEST); // TODO necessary? Andrew: Not unless you enable it somewhere else in the loop.
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);

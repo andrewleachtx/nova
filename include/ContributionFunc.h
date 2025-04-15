@@ -20,7 +20,7 @@ class BaseFunc {
         void setT(float val) { t = val; };
         void setPolarity(float val) { polarity = val == 0 ? -1 : 1; };
 
-        virtual float getWeight() const { return contribution; }; // Consider including polarity
+        virtual float getWeight() const { return contribution * polarity; }; // Consider including polarity
 
     protected:
         float x;

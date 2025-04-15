@@ -321,6 +321,8 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
     }
 
     glm::vec2 rolling_sum(0.0f, 0.0f);
+    glm::vec2 positive_sum(0.f, 0.f); // TEST: Positive rolling sum
+    std::vector<float> total_positive; // TEST: Positive rolling sum
     std::vector<float> total;
     for (size_t i = eventBound_L; i <= eventBound_R; ++i) {
         float x(evtParticles[i].x), y(evtParticles[i].y), t(evtParticles[i].z);
@@ -338,6 +340,14 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 
             rolling_sum.x += x;
             rolling_sum.y += y;
+
+            if (contributionFunc->getWeight() > 0) { // TEST: Positive rolling sum
+                positive_sum.x += x;
+                positive_sum.y += y;
+                total_positive.push_back(x);
+                total_positive.push_back(y);
+                total_positive.push_back(contributionFunc->getWeight());
+            }
         }
     }
 
@@ -365,24 +375,49 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 
     if (pca) {
         // Calculate covariance
+        bool is_positive_only = true;
 
         // TODO: inverse change? (make sure to always update when new files are used)
         float mean_x = rolling_sum.x / (total.size() / 3);
         float mean_y = rolling_sum.y / (total.size() / 3);
 
-        float cov_x_x(0.0f), cov_x_y(0.0f), cov_y_y(0.0f);
-        for (size_t i = 0; i < total.size(); i += 3) {
-            float x = total[i];
-            float y = total[i + 1];
-
-            cov_x_y += (x - mean_x) * (y - mean_y);
-            cov_x_x += (x - mean_x) * (x - mean_x);
-            cov_y_y += (y - mean_y) * (y - mean_y);
+        // TEST: mean calculated w/ only positive events
+        if (is_positive_only){
+            mean_x = positive_sum.x / (total_positive.size() / 3);
+            mean_y = positive_sum.y / (total_positive.size() / 3);
         }
-
-        cov_x_y /= (total.size() / (3 - 1));
-        cov_x_x /= (total.size() / (3 - 1));
-        cov_y_y /= (total.size() / (3 - 1));
+        
+        float cov_x_x(0.0f), cov_x_y(0.0f), cov_y_y(0.0f);
+        if (is_positive_only) {
+            for (size_t i = 0; i < total_positive.size(); i += 3) {
+                float x = total_positive[i];
+                float y = total_positive[i + 1];
+    
+                cov_x_y += (x - mean_x) * (y - mean_y);
+                cov_x_x += (x - mean_x) * (x - mean_x);
+                cov_y_y += (y - mean_y) * (y - mean_y);
+            }
+        } else {
+            for (size_t i = 0; i < total.size(); i += 3) {
+                float x = total[i];
+                float y = total[i + 1];
+    
+                cov_x_y += (x - mean_x) * (y - mean_y);
+                cov_x_x += (x - mean_x) * (x - mean_x);
+                cov_y_y += (y - mean_y) * (y - mean_y);
+            }
+        }
+        
+        if (is_positive_only) {
+            cov_x_y /= (total_positive.size() / 3 - 1);
+            cov_x_x /= (total_positive.size() / 3 - 1);
+            cov_y_y /= (total_positive.size() / 3 - 1);
+        } else {
+            cov_x_y /= (total.size() / 3 - 1);
+            cov_x_x /= (total.size() / 3 - 1);
+            cov_y_y /= (total.size() / 3 - 1);
+        }
+        
 
         // Matrix
         float a = 1;
