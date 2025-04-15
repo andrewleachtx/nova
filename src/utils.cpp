@@ -19,6 +19,7 @@
 
 #include <Windows.h>
 #include <shobjidl.h>
+#include <fstream>
 
 using std::cout, std::endl, std::cerr;
 using std::shared_ptr, std::make_shared;
@@ -28,7 +29,7 @@ using glm::vec3;
 // FIXME: Breaks on cancel
 // FIXME: Doesn't throw an error when file doesn't exist
 // FIXME: Remove the argc / argv that takes in a file
-string OpenFileDialog() {
+string OpenFileDialog(string& initialDirectory) {
     HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
     if (FAILED(hr)) return "";
 
@@ -37,6 +38,25 @@ string OpenFileDialog() {
     if (FAILED(hr)) {
         CoUninitialize();
         return "";
+    }
+    
+    //Sets file filter
+    const COMDLG_FILTERSPEC fileTypes[] = {
+        {L"AEDAT4 Files", L"*.aedat4"}
+    };
+    hr = pFileOpen->SetFileTypes(1, fileTypes);
+    hr = pFileOpen->SetTitle(L"Select a data AEDAT4 File");
+
+    // Set the initial directory
+    IShellItem* pInitialFolder = nullptr;
+    std::wstring winitialDirectory = std::wstring(initialDirectory.begin(),initialDirectory.end());
+    hr = SHCreateItemFromParsingName(winitialDirectory.c_str(), nullptr, IID_PPV_ARGS(&pInitialFolder));
+    if (SUCCEEDED(hr)) {
+        pFileOpen->SetDefaultFolder(pInitialFolder);
+        pInitialFolder->Release();
+        std::cout<<"good?"<<std::endl;
+    }else{
+        std::cout<<"failure"<<std::endl;
     }
 
     hr = pFileOpen->Show(NULL);
@@ -60,6 +80,22 @@ string OpenFileDialog() {
     pFileOpen->Release();
     CoUninitialize();
     return "";
+}
+
+bool isValidFilePath(string filePath) {
+    // Check if the file exists
+    std::ifstream file(filePath);
+    if (!file) {
+        return false;
+    }
+
+    // Check if the file extension is ".aedat4"
+    size_t extensionPos = filePath.find_last_of('.');
+    if (extensionPos == string::npos || filePath.substr(extensionPos) != ".aedat4") {
+        return false;
+    }
+
+    return true;
 }
 
 Program genPhongProg(const string &resource_dir) {
@@ -469,7 +505,7 @@ static void spaceWindowWrapper(bool &dSpaceWindow, shared_ptr<EventData> &evtDat
 
 void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
     MainScene &mainSceneFBO, FrameScene &frameSceneFBO, shared_ptr<EventData> &evtData, std::string& datafilepath,
-    std::string &video_name, bool &recording) {
+    std::string &video_name, bool &recording, std::string& datadirectory) {
 
     drawGUIDockspace();
 
@@ -506,7 +542,10 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
 
         if (ImGui::Button("Open File")) {
             dFile = true;
-            datafilepath=OpenFileDialog();
+            string newFilePath=OpenFileDialog(datadirectory);
+            if(isValidFilePath(newFilePath)){
+                datafilepath=std::move(newFilePath);
+            }
         }
 
         // TODO: Cache recent files and state?
