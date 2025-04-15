@@ -2,7 +2,7 @@
 #include <iostream>
 #include <GL/glew.h>
 
-MainScene::MainScene() : fbo(0), colorTexture(0), depthRBO(0), width(0), height(0) {}
+MainScene::MainScene() : fbo(0), colorTexture(0), depthRBO(0), width(0), height(0), dirtyBit(false) {}
 
 MainScene::~MainScene() {
     if (fbo != 0) {
@@ -17,6 +17,8 @@ MainScene::~MainScene() {
 }
 
 bool MainScene::initialize(int w, int h, bool frame) {
+    dirtyBit = true;
+    
     width = w;
     height = h;
 
@@ -30,7 +32,7 @@ bool MainScene::initialize(int w, int h, bool frame) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height,
             0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr); // Note: GL_R32F possible if color does not change
     }
-    else {
+    else { // TODO ask if better to just pick higher resolution
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height,
                     0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     }
