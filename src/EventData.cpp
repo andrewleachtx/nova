@@ -351,6 +351,8 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
     }
 
     glm::vec2 rolling_sum(0.0f, 0.0f);
+    glm::vec2 positive_sum(0.f, 0.f); // TEST: Positive rolling sum
+    std::vector<float> total_positive; // TEST: Positive rolling sum
     std::vector<float> total;
     for (size_t i = eventBound_L; i <= eventBound_R; ++i) {
         float x(evtParticles[i].x), y(evtParticles[i].y), t(evtParticles[i].z);
@@ -368,6 +370,14 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 
             rolling_sum.x += x;
             rolling_sum.y += y;
+
+            if (contributionFunc->getWeight() > 0) { // TEST: Positive rolling sum
+                positive_sum.x += x;
+                positive_sum.y += y;
+                total_positive.push_back(x);
+                total_positive.push_back(y);
+                total_positive.push_back(contributionFunc->getWeight());
+            }
         }
     }
 
@@ -395,24 +405,49 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 
     if (pca) {
         // Calculate covariance
+        bool is_positive_only = true;
 
         // TODO: inverse change? (make sure to always update when new files are used)
         float mean_x = rolling_sum.x / (total.size() / 3);
         float mean_y = rolling_sum.y / (total.size() / 3);
 
-        float cov_x_x(0.0f), cov_x_y(0.0f), cov_y_y(0.0f);
-        for (size_t i = 0; i < total.size(); i += 3) {
-            float x = total[i];
-            float y = total[i + 1];
-
-            cov_x_y += (x - mean_x) * (y - mean_y);
-            cov_x_x += (x - mean_x) * (x - mean_x);
-            cov_y_y += (y - mean_y) * (y - mean_y);
+        // TEST: mean calculated w/ only positive events
+        if (is_positive_only){
+            mean_x = positive_sum.x / (total_positive.size() / 3);
+            mean_y = positive_sum.y / (total_positive.size() / 3);
         }
-
-        cov_x_y /= (total.size() / 3 - 1);
-        cov_x_x /= (total.size() / 3 - 1);
-        cov_y_y /= (total.size() / 3 - 1);
+        
+        float cov_x_x(0.0f), cov_x_y(0.0f), cov_y_y(0.0f);
+        if (is_positive_only) {
+            for (size_t i = 0; i < total_positive.size(); i += 3) {
+                float x = total_positive[i];
+                float y = total_positive[i + 1];
+    
+                cov_x_y += (x - mean_x) * (y - mean_y);
+                cov_x_x += (x - mean_x) * (x - mean_x);
+                cov_y_y += (y - mean_y) * (y - mean_y);
+            }
+        } else {
+            for (size_t i = 0; i < total.size(); i += 3) {
+                float x = total[i];
+                float y = total[i + 1];
+    
+                cov_x_y += (x - mean_x) * (y - mean_y);
+                cov_x_x += (x - mean_x) * (x - mean_x);
+                cov_y_y += (y - mean_y) * (y - mean_y);
+            }
+        }
+        
+        if (is_positive_only) {
+            cov_x_y /= (total_positive.size() / 3 - 1);
+            cov_x_x /= (total_positive.size() / 3 - 1);
+            cov_y_y /= (total_positive.size() / 3 - 1);
+        } else {
+            cov_x_y /= (total.size() / 3 - 1);
+            cov_x_x /= (total.size() / 3 - 1);
+            cov_y_y /= (total.size() / 3 - 1);
+        }
+        
 
         // Matrix
         float a = 1;
@@ -424,14 +459,27 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 
         // Eigen vectors
         std::vector<glm::vec3> eigenvectors;
-        eigenvectors.push_back(glm::normalize(glm::vec3(eigen1 - cov_y_y, cov_x_y, 1)));
-        eigenvectors.push_back(glm::normalize(glm::vec3(eigen2 - cov_y_y, cov_x_y, 1)));
+        eigenvectors.push_back(std::sqrt(eigen1) * glm::normalize(glm::vec3(eigen1 - cov_y_y, cov_x_y, 1))); 
+        eigenvectors.push_back(std::sqrt(eigen2) * glm::normalize(glm::vec3(eigen2 - cov_y_y, cov_x_y, 1))); 
+
+        // define position of mean and eigenvectors in cameraview 
+        glm::vec4 mean_cameraspace(mean_x, mean_y, 1.f, 1.f);
+        mean_cameraspace = projection * mean_cameraspace;
+        eigenvectors.at(0) = projection * glm::vec4(eigenvectors.at(0).x, eigenvectors.at(0).y, 0.f, 0.f);
+        eigenvectors.at(1) = projection * glm::vec4(eigenvectors.at(1).x, eigenvectors.at(1).y, 0.f, 0.f);
+
+        // add initial position to eigenvalues
+        eigenvectors.at(0) += glm::vec3(mean_cameraspace);
+        eigenvectors.at(1) += glm::vec3(mean_cameraspace);
 
         glBegin(GL_LINES);
-        glVertex3f(0, 0, 1);
-        glVertex3f(eigenvectors[0].x, eigenvectors[0].y, eigenvectors[0].z);
-        glVertex3f(0, 0, 1);
-        glVertex3f(eigenvectors[1].x, eigenvectors[1].y, eigenvectors[1].z);
+        //glLineWidth(2);
+        glColor3f(1.f, 0.f, 0.f);
+        glVertex3f(mean_cameraspace.x, mean_cameraspace.y, mean_cameraspace.z);
+        glVertex3f(eigenvectors[0].x, eigenvectors[0].y, 1.f);
+        glColor3f(0.f, 1.f, 0.f);
+        glVertex3f(mean_cameraspace.x, mean_cameraspace.y, mean_cameraspace.z);
+        glVertex3f(eigenvectors[1].x, eigenvectors[1].y, 1.f);
         glEnd();
 
     }
