@@ -26,7 +26,7 @@ bool g_cursorVisible(false);
 bool g_isMainviewportHovered(false);
 bool g_keyToggles[256] = {false};
 float g_fps, g_lastRenderTime(0.0f);
-string g_resourceDir, g_dataFilepath;
+string g_resourceDir, g_dataFilepath, g_dataDir;
 
 MainScene g_mainSceneFBO;
 FrameScene g_frameSceneFBO;
@@ -48,10 +48,22 @@ shared_ptr<EventData> g_eventData;
 
 float g_particleScale(0.75f);
 
-static void initEvtDataAndCamera() {
+static void updateEvtDataAndCamera() {
     // Load .aedat events into EventData object //
     g_eventData = make_shared<EventData>();
     g_eventData->initParticlesFromFile(g_dataFilepath);
+    g_eventData->initInstancing(g_progInst);
+
+    // Camera //
+    g_camera = Camera();
+    g_camera.setInitPos(700.0f, 125.0f, 1500.0f);
+    g_camera.setEvtCenter(g_eventData->getCenter());
+}
+
+static void initEvtDataAndCamera() {
+    // Load .aedat events into EventData object //
+    g_eventData = make_shared<EventData>();
+    g_eventData->initParticlesEmpty();
     g_eventData->initInstancing(g_progInst);
 
     // Camera //
@@ -228,7 +240,7 @@ static void render() {
         ImGui::NewFrame();
         
         drawGUI(g_camera, g_fps, g_particleScale, g_isMainviewportHovered, g_mainSceneFBO, 
-            g_frameSceneFBO, g_eventData, g_dataFilepath, video_name, recording);
+            g_frameSceneFBO, g_eventData, g_dataFilepath, video_name, recording, g_dataDir);
     
     // Render ImGui //
         ImGui::Render();
@@ -284,7 +296,7 @@ int main(int argc, char** argv) {
     }
 
     g_resourceDir = argv[1] + string("/");
-    g_dataFilepath = argv[2];
+    g_dataDir = argv[2];
 
     glfwSetErrorCallback(error_callback);
 
@@ -341,7 +353,7 @@ int main(int argc, char** argv) {
         
         if (g_dataFilepath != curFilepath) {
             curFilepath = g_dataFilepath;
-            initEvtDataAndCamera();
+            updateEvtDataAndCamera();
         }
 
         glfwSwapBuffers(g_window);

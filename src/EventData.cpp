@@ -113,6 +113,36 @@ void EventData::initParticlesFromFile(const std::string &filename) {
     printf("Loaded %zu particles from %s\n", evtParticles.size(), filename.c_str());
 }
 
+void EventData::initParticlesEmpty() {
+    // If someone calls init again, we should always reset
+    reset();
+
+    
+    evtParticles.push_back(glm::vec4(0.0f,0.0f,1.0f,0.0f));
+
+    earliestTimestamp=1.0f;
+    latestTimestamp=1.0f;
+
+    // TODO: This is arbitrary, we can should define as a constant somewhere
+    // Apply scale
+    this->diffScale = 5.0f;
+    for (auto &evt : evtParticles) {
+        evt.z *= diffScale;
+    }
+
+    timeWindow_L = 0.0f;
+    timeWindow_R = 1.0f;
+
+    // Normalize the timestamp of the min/max XYZ for bounding box
+    this->minXYZ = glm::vec3(0.0f,0.0f,0.0f);
+    this->maxXYZ = glm::vec3(0.0f,0.0f,0.0f);
+    this->center = glm::vec3(0.0f,0.0f,0.0f);
+    
+    this->spaceWindow = glm::vec4(minXYZ.y, maxXYZ.x, maxXYZ.y, minXYZ.x);
+
+    printf("Loaded 0 particles\n");
+}
+
 // TODO: Move precalculable things to an init
 void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &progBasic) {
     const glm::vec3 &scaled_minXYZ = minXYZ; 
@@ -492,6 +522,9 @@ uint EventData::getFirstEvent(float timestamp, float normFactor) const {
             return i;
         }
     }
+    if(evtParticles.size()==1){
+        return 0;
+    }
     std::cerr << "Error: getFirstEvent" << std::endl;
     return std::numeric_limits<uint>::max();
 } 
@@ -507,6 +540,9 @@ uint EventData::getLastEvent(float timestamp, float normFactor) const {
         if (t <= timestamp) {
             return i;
         }
+    }
+    if(evtParticles.size()==1){
+        return 0;
     }
     std::cerr << "Error: getLastEvent" << std::endl;
     return std::numeric_limits<uint>::max();
