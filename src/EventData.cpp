@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <dv-processing/core/utils.hpp>
 #include <omp.h>
+#include <windows.h>
 
 using std::vector, std::cout, std::endl;
 
@@ -112,6 +113,36 @@ void EventData::initParticlesFromFile(const std::string &filename) {
     this->spaceWindow = glm::vec4(minXYZ.y, maxXYZ.x, maxXYZ.y, minXYZ.x);
 
     printf("Loaded %zu particles from %s\n", evtParticles.size(), filename.c_str());
+}
+
+void EventData::initParticlesEmpty() {
+    // If someone calls init again, we should always reset
+    reset();
+
+    
+    evtParticles.push_back(glm::vec4(0.0f,0.0f,1.0f,0.0f));
+
+    earliestTimestamp=1.0f;
+    latestTimestamp=1.0f;
+
+    // TODO: This is arbitrary, we can should define as a constant somewhere
+    // Apply scale
+    this->diffScale = 5.0f;
+    for (auto &evt : evtParticles) {
+        evt.z *= diffScale;
+    }
+
+    timeWindow_L = 0.0f;
+    timeWindow_R = 1.0f;
+
+    // Normalize the timestamp of the min/max XYZ for bounding box
+    this->minXYZ = glm::vec3(0.0f,0.0f,0.0f);
+    this->maxXYZ = glm::vec3(0.0f,0.0f,0.0f);
+    this->center = glm::vec3(0.0f,0.0f,0.0f);
+    
+    this->spaceWindow = glm::vec4(minXYZ.y, maxXYZ.x, maxXYZ.y, minXYZ.x);
+
+    printf("Loaded 0 particles\n");
 }
 
 // TODO: Move precalculable things to an init
@@ -321,9 +352,12 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
     eventBound_L = eventWindow_L + eventShutterWindow_L;
     eventBound_R = eventWindow_L + eventShutterWindow_R;
 
+    // TODO fixme on god real.
+    // TODO critical section iterator and reduce totalSize
     float rollingX(0), rollingY(0);
-    std::vector<float> total((eventBound_R - eventBound_L + 1) * 3);
+    std::vector<float> total;
     float f = freq / 1000000 / diffScale; // Not always needed but moved outside of threading to reduce divisions
+    bool isPositiveOnly = true; // TODO add to utils.cpp
     #pragma omp parallel
     {
         // Select contribution function
@@ -341,6 +375,7 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
                 break;
         }
 
+        std::vector<float> localTotal;
         #pragma omp for reduction(+ : rollingX) reduction(+ : rollingY)
         for (int i = eventBound_L; i <= eventBound_R; ++i) {
             float x(evtParticles[i].x), y(evtParticles[i].y), t(evtParticles[i].z);
@@ -350,19 +385,25 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
             contributionFunc->setY(y);
             contributionFunc->setT(t);
             contributionFunc->setPolarity(polarity);
-            
-            if (within_inc(x, spaceWindow.w, spaceWindow.y) && within_inc(y, spaceWindow.x, spaceWindow.z)) {
-                size_t index = (i - eventBound_L) * 3;
-                total[index] = x;
-                total[index + 1] = y;
-                total[index + 2] = contributionFunc->getWeight();
 
-                rollingX += x;
-                rollingY += y;
+            if (polarity == 1 || not isPositiveOnly) {
+                if (within_inc(x, spaceWindow.w, spaceWindow.y) && within_inc(y, spaceWindow.x, spaceWindow.z)) {
+                    localTotal.push_back(x);
+                    localTotal.push_back(y);
+                    localTotal.push_back(contributionFunc->getWeight());
+
+                    rollingX += x;
+                    rollingY += y;
+                }
             }
         }
+
+        #pragma omp critical
+        {
+            total.insert(total.end(), std::make_move_iterator(localTotal.begin()), std::make_move_iterator(localTotal.end()));
+        }
     }
- 
+
     // Load data points
     glBindVertexArray(VAO); 
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -388,21 +429,25 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
         // Calculate covariance
 
         // TODO: inverse change? (make sure to always update when new files are used)
-        size_t inverseNumElems = 1 / total.size() / 3;
+        float inverseNumElems = 3.0f / total.size();
         float mean_x = rollingX * inverseNumElems;
         float mean_y = rollingY * inverseNumElems;
-
+        
         float cov_x_x(0.0f), cov_x_y(0.0f), cov_y_y(0.0f);
-        for (size_t i = 0; i < total.size(); i += 3) {
-            float x = total[i];
-            float y = total[i + 1];
+        #pragma omp parallel
+        {
+            #pragma omp for reduction(+ : cov_x_y) reduction(+ : cov_x_x) reduction(+ : cov_y_y)
+            for (int i = 0; i < (int) total.size(); i += 3) {
+                float x = total[i];
+                float y = total[i + 1];
 
-            cov_x_y += (x - mean_x) * (y - mean_y);
-            cov_x_x += (x - mean_x) * (x - mean_x);
-            cov_y_y += (y - mean_y) * (y - mean_y);
+                cov_x_y += (x - mean_x) * (y - mean_y);
+                cov_x_x += (x - mean_x) * (x - mean_x);
+                cov_y_y += (y - mean_y) * (y - mean_y);
+            }
         }
 
-        inverseNumElems = 1 / (total.size() / 3 - 1);
+        inverseNumElems = 1.0f / (total.size() / 3.0f - 1);
         cov_x_y *= inverseNumElems;
         cov_x_x *= inverseNumElems;
         cov_y_y *= inverseNumElems;
@@ -417,14 +462,28 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 
         // Eigen vectors
         std::vector<glm::vec3> eigenvectors;
-        eigenvectors.push_back(glm::normalize(glm::vec3(eigen1 - cov_y_y, cov_x_y, 1)));
-        eigenvectors.push_back(glm::normalize(glm::vec3(eigen2 - cov_y_y, cov_x_y, 1)));
+        eigenvectors.push_back(std::sqrt(eigen1) * glm::normalize(glm::vec3(eigen1 - cov_y_y, cov_x_y, 1))); 
+        eigenvectors.push_back(std::sqrt(eigen2) * glm::normalize(glm::vec3(eigen2 - cov_y_y, cov_x_y, 1))); 
 
+        // define position of mean and eigenvectors in cameraview 
+        glm::vec4 mean_cameraspace(mean_x, mean_y, 1.0f, 1.0f);
+        mean_cameraspace = projection * mean_cameraspace;
+        eigenvectors.at(0) = projection * glm::vec4(eigenvectors.at(0).x, eigenvectors.at(0).y, 0.0f, 0.0f);
+        eigenvectors.at(1) = projection * glm::vec4(eigenvectors.at(1).x, eigenvectors.at(1).y, 0.0f, 0.0f);
+
+        // add initial position to eigenvalues
+        eigenvectors.at(0) += glm::vec3(mean_cameraspace);
+        eigenvectors.at(1) += glm::vec3(mean_cameraspace);
+
+        glDisable(GL_BLEND); // Line should be opaque
+        glLineWidth(5.0f); // Could make setable
         glBegin(GL_LINES);
-        glVertex3f(0, 0, 1);
-        glVertex3f(eigenvectors[0].x, eigenvectors[0].y, eigenvectors[0].z);
-        glVertex3f(0, 0, 1);
-        glVertex3f(eigenvectors[1].x, eigenvectors[1].y, eigenvectors[1].z);
+        glColor3f(1.0f, 0.0f, 0.0f);
+        glVertex3f(mean_cameraspace.x, mean_cameraspace.y, mean_cameraspace.z);
+        glVertex3f(eigenvectors[0].x, eigenvectors[0].y, 1.0f);
+        glColor3f(0.0f, 1.0f, 0.0f);
+        glVertex3f(mean_cameraspace.x, mean_cameraspace.y, mean_cameraspace.z);
+        glVertex3f(eigenvectors[1].x, eigenvectors[1].y, 1.0f);
         glEnd();
 
     }

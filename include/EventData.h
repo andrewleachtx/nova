@@ -28,6 +28,7 @@ class EventData {
         void reset();
         void initInstancing(Program &instancingProg);
         void initParticlesFromFile(const std::string &filename); // TODO speedup and dynamic
+        void initParticlesEmpty();
 
         void drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &progBasic);
         void draw(MatrixStack &MV, MatrixStack &P, Program &prog,
