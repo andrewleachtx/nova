@@ -28,6 +28,7 @@ class EventData {
         void reset();
         void initInstancing(Program &instancingProg);
         void initParticlesFromFile(const std::string &filename); // TODO speedup and dynamic
+        void initParticlesEmpty();
 
         void drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &progBasic);
         void draw(MatrixStack &MV, MatrixStack &P, Program &prog,
@@ -52,7 +53,7 @@ class EventData {
         const glm::vec3 getMax_XYZ() const { return maxXYZ; }
         const float &getMaxTimestamp() const { return maxXYZ.z; }
         const float &getMinTimestamp() const { return minXYZ.z; }
-        const uint getMaxEvent() const { return evtParticles.size(); }
+        const uint getMaxEvent() const { return static_cast<const uint>(evtParticles.size()); }
         
         float &getTimeWindow_L() { return timeWindow_L; }
         float &getTimeWindow_R() { return timeWindow_R; }
@@ -64,6 +65,10 @@ class EventData {
         uint &getEventShutterWindow_L() { return eventShutterWindow_L; }
         uint &getEventShutterWindow_R() { return eventShutterWindow_R; }
         int &getShutterType() { return shutterType; }
+
+        // TODO move?
+        glm::vec3 &getNegColor() { return negColor; }
+        glm::vec3 &getPosColor() { return posColor; }
 
         static const int TIME_CONVERSION = 1000; // Could be made setable
         static const int TIME_SHUTTER = 0; // values must match ImGui::Combo order in utils.cpp
@@ -101,6 +106,10 @@ class EventData {
 
         // Instancing
         GLuint instVBO;
+
+        // TODO Move?
+        glm::vec3 negColor;
+        glm::vec3 posColor;
 };
 
 #endif // EVENT_DATA_H

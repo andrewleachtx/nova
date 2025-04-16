@@ -19,6 +19,7 @@
 
 #include <Windows.h>
 #include <shobjidl.h>
+#include <fstream>
 
 using std::cout, std::endl, std::cerr;
 using std::shared_ptr, std::make_shared;
@@ -28,7 +29,7 @@ using glm::vec3;
 // FIXME: Breaks on cancel
 // FIXME: Doesn't throw an error when file doesn't exist
 // FIXME: Remove the argc / argv that takes in a file
-string OpenFileDialog() {
+string OpenFileDialog(string& initialDirectory) {
     HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
     if (FAILED(hr)) return "";
 
@@ -37,6 +38,22 @@ string OpenFileDialog() {
     if (FAILED(hr)) {
         CoUninitialize();
         return "";
+    }
+    
+    //Sets file filter
+    const COMDLG_FILTERSPEC fileTypes[] = {
+        {L"AEDAT4 Files", L"*.aedat4"}
+    };
+    hr = pFileOpen->SetFileTypes(1, fileTypes);
+    hr = pFileOpen->SetTitle(L"Select a data AEDAT4 File");
+
+    // Set the initial directory
+    IShellItem* pInitialFolder = nullptr;
+    std::wstring winitialDirectory = std::wstring(initialDirectory.begin(),initialDirectory.end());
+    hr = SHCreateItemFromParsingName(winitialDirectory.c_str(), nullptr, IID_PPV_ARGS(&pInitialFolder));
+    if (SUCCEEDED(hr)) {
+        pFileOpen->SetDefaultFolder(pInitialFolder);
+        pInitialFolder->Release();
     }
 
     hr = pFileOpen->Show(NULL);
@@ -60,6 +77,22 @@ string OpenFileDialog() {
     pFileOpen->Release();
     CoUninitialize();
     return "";
+}
+
+bool isValidFilePath(string filePath) {
+    // Check if the file exists
+    std::ifstream file(filePath);
+    if (!file) {
+        return false;
+    }
+
+    // Check if the file extension is ".aedat4"
+    size_t extensionPos = filePath.find_last_of('.');
+    if (extensionPos == string::npos || filePath.substr(extensionPos) != ".aedat4") {
+        return false;
+    }
+
+    return true;
 }
 
 Program genPhongProg(const string &resource_dir) {
@@ -101,6 +134,9 @@ Program genInstProg(const std::string &resource_dir) {
     prog.addUniform("particleScale");
     prog.addUniform("lightPos");
     prog.addUniform("lightCol");
+
+    prog.addUniform("negColor");
+    prog.addUniform("posColor");
 
     prog.addAttribute("aPos");
     prog.addAttribute("aNor");
@@ -469,7 +505,7 @@ static void spaceWindowWrapper(bool &dSpaceWindow, shared_ptr<EventData> &evtDat
 
 void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
     MainScene &mainSceneFBO, FrameScene &frameSceneFBO, shared_ptr<EventData> &evtData, std::string& datafilepath,
-    std::string &video_name, bool &recording) {
+    std::string &video_name, bool &recording, std::string& datadirectory) {
 
     drawGUIDockspace();
 
@@ -506,7 +542,10 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
 
         if (ImGui::Button("Open File")) {
             dFile = true;
-            datafilepath=OpenFileDialog();
+            string newFilePath=OpenFileDialog(datadirectory);
+            if(isValidFilePath(newFilePath)){
+                datafilepath=std::move(newFilePath);
+            }
         }
 
         // TODO: Cache recent files and state?
@@ -516,6 +555,9 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::Text("Camera (World): (%.3f, %.3f, %.3f)", cam_pos.x, cam_pos.y, cam_pos.z);
         ImGui::Separator();
         ImGui::SliderFloat("Particle Scale", &particle_scale, 0.1f, 2.5f);
+        ImGui::Separator();
+        ImGui::ColorEdit3("Negative Polarity Color", (float *) &evtData->getNegColor());
+        ImGui::ColorEdit3("Positive Polarity Color", (float *) &evtData->getPosColor());
         ImGui::Separator();
 
         // FPS
@@ -529,7 +571,7 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::Text("Min FPS: %.1f", minFPS);
         ImGui::Text("Max FPS: %.1f", maxFPS);
         ImGui::Separator();
-        ImGui::PlotLines("##FPS History", fps_historyBuf.data(), fps_historyBuf.size(), fps_bufIdx, nullptr, 0.0f, maxFPS + 10.0f, ImVec2(0, 80));
+        ImGui::PlotLines("##FPS History", fps_historyBuf.data(), static_cast<int>(fps_historyBuf.size()), static_cast<int>(fps_bufIdx), nullptr, 0.0f, maxFPS + 10.0f, ImVec2(0, 80));
         ImGui::Separator();
 
         // Windows
@@ -648,6 +690,6 @@ vec3 randXYZ() {
 void genVBO(GLuint &vbo, size_t num_bytes, size_t draw_type) {
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, num_bytes, 0, draw_type);
+    glBufferData(GL_ARRAY_BUFFER, num_bytes, 0, static_cast<GLenum>(draw_type));
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }

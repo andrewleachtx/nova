@@ -109,3 +109,10 @@ Run `run.ps1`. You can look at it to see what it does.
 
 # TODO
 1. Make a `vcpkg.json` manifest? It is already a pretty simple vcpkg install though.
+
+# Dependencies / References
+
+- [LANL](https://lanl.gov/) for project idea, guidance, and support with features and logic
+- [OpenGL](https://www.opengl.org/) and [Dear ImGui](https://github.com/ocornut/imgui)
+- Various other libraries as found in files (GLFW, GLEW, GLM, Eigen, CMake, dv-processing, fmt, ffmpeg, etc.)
+- [Dr. Shinjiro Sueda](https://people.engr.tamu.edu/sueda/index.html) for teaching us graphics and for any course-given skeleton code used in any cited files headers
