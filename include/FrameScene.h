@@ -15,7 +15,7 @@ public:
         framePeriod_T(0.0f), framePeriod_E(0)  {}
     ~FrameScene() {}
 
-    bool initialize(int width, int height) { return MainScene::initialize(width, height, true); };
+    bool initialize(int inputWidth, int inputHeight) { return MainScene::initialize(inputWidth, inputHeight, true); };
     void normalizeTime(float factor) { framePeriod_T *= factor; }
     void oddizeTime(float factor) { framePeriod_T /= factor; }
 

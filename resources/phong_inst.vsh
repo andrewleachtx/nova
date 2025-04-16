@@ -5,8 +5,11 @@ uniform mat4 MV;
 uniform mat4 MV_it;
 
 uniform float particleScale;
-uniform vec3 lightPos;
+uniform vec3 lightPos; // TODO: Needed?
 uniform vec3 lightCol;
+
+uniform vec3 negColor;
+uniform vec3 posColor;
 
 in vec3 aPos;
 in vec3 aNor;
@@ -26,7 +29,7 @@ void main() {
     // }
 
     mat4 transform = mat4(1.0);
-    transform[3] = aInstPos; // the current instance position
+    transform[3].xyz = aInstPos.xyz; // the current instance position
 
     // scale
     transform[0][0] = particleScale;
@@ -35,10 +38,10 @@ void main() {
 
     // xyza -> for now if + green - red
     if (aInstPos.a > 1e-5) {
-        vKa = vec3(0.0, 1.0, 0.0);
+        vKa = posColor;
     }
     else {
-        vKa = vec3(1.0, 0.0, 0.0);
+        vKa = negColor;
     }
 
     mat4 MV_transf = MV * transform;

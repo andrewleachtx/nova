@@ -54,9 +54,6 @@ string OpenFileDialog(string& initialDirectory) {
     if (SUCCEEDED(hr)) {
         pFileOpen->SetDefaultFolder(pInitialFolder);
         pInitialFolder->Release();
-        std::cout<<"good?"<<std::endl;
-    }else{
-        std::cout<<"failure"<<std::endl;
     }
 
     hr = pFileOpen->Show(NULL);
@@ -137,6 +134,9 @@ Program genInstProg(const std::string &resource_dir) {
     prog.addUniform("particleScale");
     prog.addUniform("lightPos");
     prog.addUniform("lightCol");
+
+    prog.addUniform("negColor");
+    prog.addUniform("posColor");
 
     prog.addAttribute("aPos");
     prog.addAttribute("aNor");
@@ -556,6 +556,9 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::Separator();
         ImGui::SliderFloat("Particle Scale", &particle_scale, 0.1f, 2.5f);
         ImGui::Separator();
+        ImGui::ColorEdit3("Negative Polarity Color", (float *) &evtData->getNegColor());
+        ImGui::ColorEdit3("Positive Polarity Color", (float *) &evtData->getPosColor());
+        ImGui::Separator();
 
         // FPS
         updateFPS(fps);
@@ -568,7 +571,7 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::Text("Min FPS: %.1f", minFPS);
         ImGui::Text("Max FPS: %.1f", maxFPS);
         ImGui::Separator();
-        ImGui::PlotLines("##FPS History", fps_historyBuf.data(), fps_historyBuf.size(), fps_bufIdx, nullptr, 0.0f, maxFPS + 10.0f, ImVec2(0, 80));
+        ImGui::PlotLines("##FPS History", fps_historyBuf.data(), static_cast<int>(fps_historyBuf.size()), static_cast<int>(fps_bufIdx), nullptr, 0.0f, maxFPS + 10.0f, ImVec2(0, 80));
         ImGui::Separator();
 
         // Windows
@@ -687,6 +690,6 @@ vec3 randXYZ() {
 void genVBO(GLuint &vbo, size_t num_bytes, size_t draw_type) {
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, num_bytes, 0, draw_type);
+    glBufferData(GL_ARRAY_BUFFER, num_bytes, 0, static_cast<GLenum>(draw_type));
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }

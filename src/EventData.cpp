@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <cstdio>
 #include <dv-processing/core/utils.hpp>
+#include <omp.h>
+#include <windows.h>
 
 using std::vector, std::cout, std::endl;
 
@@ -13,7 +15,7 @@ EventData::EventData() : camera_resolution(0.0f), diffScale(0.0f), mod_freq(1),
     timeWindow_L(0.0f), timeWindow_R(0.0f), eventWindow_L(0), eventWindow_R(0),
     timeShutterWindow_L(0.0f), timeShutterWindow_R(0.0f), eventShutterWindow_L(0),
     eventShutterWindow_R(0), spaceWindow(0.0f), minXYZ(std::numeric_limits<float>::max()),
-    maxXYZ(std::numeric_limits<float>::lowest()), center(0.0f) {}
+    maxXYZ(std::numeric_limits<float>::lowest()), center(0.0f), negColor({1.0f, 0.0f, 0.0f}), posColor({0.0f, 1.0f, 0.0f}) {}
 
 EventData::~EventData() {
     if (instVBO) {
@@ -149,8 +151,8 @@ void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Progra
     const glm::vec3 &scaled_maxXYZ = maxXYZ;
     
     glLineWidth(2.0f);
-    
-    glm::vec3 corners[8] = {
+
+    glm::vec3 corners[16] = {
         { scaled_minXYZ.x, scaled_minXYZ.y, scaled_minXYZ.z },
         { scaled_maxXYZ.x, scaled_minXYZ.y, scaled_minXYZ.z },
         { scaled_maxXYZ.x, scaled_maxXYZ.y, scaled_minXYZ.z },
@@ -158,13 +160,26 @@ void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Progra
         { scaled_minXYZ.x, scaled_minXYZ.y, scaled_maxXYZ.z },
         { scaled_maxXYZ.x, scaled_minXYZ.y, scaled_maxXYZ.z },
         { scaled_maxXYZ.x, scaled_maxXYZ.y, scaled_maxXYZ.z },
-        { scaled_minXYZ.x, scaled_maxXYZ.y, scaled_maxXYZ.z }
+        { scaled_minXYZ.x, scaled_maxXYZ.y, scaled_maxXYZ.z },
+        { spaceWindow.w, spaceWindow.x, timeWindow_L },
+        { spaceWindow.y, spaceWindow.x, timeWindow_L },
+        { spaceWindow.y, spaceWindow.z, timeWindow_L },
+        { spaceWindow.w, spaceWindow.z, timeWindow_L },
+        { spaceWindow.w, spaceWindow.x, timeWindow_R },
+        { spaceWindow.y, spaceWindow.x, timeWindow_R },
+        { spaceWindow.y, spaceWindow.z, timeWindow_R },
+        { spaceWindow.w, spaceWindow.z, timeWindow_R }
     };
 
-    int edges[12][2] = {
+
+    int edges[24][2] = {
         {0,1}, {1,2}, {2,3}, {3,0},
         {4,5}, {5,6}, {6,7}, {7,4},
-        {0,4}, {1,5}, {2,6}, {3,7}
+        {0,4}, {1,5}, {2,6}, {3,7},
+
+        {8,9},   {9,10},  {10,11}, {11,8},
+        {12,13}, {13,14}, {14,15}, {15,12},
+        {8,12},  {9,13},  {10,14}, {11,15}
     };
 
     // Instead of immediate mode use VBOs
@@ -178,8 +193,9 @@ void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Progra
     }
     
     // Buffer for x0, y0, z0, x1, y1, ... of each line segment
-    static std::vector<float> line_posbuf(12 * 2 * 3);
-    for (int i = 0; i < 12; i++) {
+    static std::vector<float> line_posbuf(24 * 2 * 3); // TODO static?
+    line_posbuf.clear();
+    for (int i = 0; i < 24; i++) {
         // Starting XYZ
         line_posbuf.push_back(corners[edges[i][0]].x);
         line_posbuf.push_back(corners[edges[i][0]].y);
@@ -201,7 +217,7 @@ void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Progra
     
     progBasic.bind();
     MV.pushMatrix();
-    
+
     // TODO: Can change, for now white
     glm::vec3 color_line(1.0f, 1.0f, 1.0f);
     BPMaterial mat_line;
@@ -284,7 +300,9 @@ void EventData::drawInstanced(MatrixStack &MV, MatrixStack &P, Program &progInst
     glUniform3fv(progInst.getUniform("lightPos"), 1, glm::value_ptr(lightPos));
     glUniform3fv(progInst.getUniform("lightCol"), 1, glm::value_ptr(lightColor));
     glUniform1f(progInst.getUniform("particleScale"), particleScale);
-    
+    glUniform3fv(progInst.getUniform("negColor"), 1, glm::value_ptr(negColor));
+    glUniform3fv(progInst.getUniform("posColor"), 1, glm::value_ptr(posColor));
+
     // meshSphere.draw(prog, true, 0, instCt);
     glPointSize((GLfloat)particleScale);
     glEnable(GL_POINT_SMOOTH);
@@ -312,7 +330,7 @@ static inline bool within_inc(uint val, uint left, uint right) {
 
 void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool morlet, float freq, bool pca) {
     float timeBound_L, timeBound_R; 
-    uint eventBound_L, eventBound_R;
+    int eventBound_L, eventBound_R;
 
     // Set up point size
     float aspectWidth = viewport_resolution.x / static_cast<float>(camera_resolution.x);
@@ -334,50 +352,55 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
     eventBound_L = eventWindow_L + eventShutterWindow_L;
     eventBound_R = eventWindow_L + eventShutterWindow_R;
 
-    // Select contribution function
-    BaseFunc *contributionFunc = nullptr;
-    int choice = morlet ? 1 : 0; // Can be expanded for new contribution functions
-    switch (choice) {
-        case 0:
-            contributionFunc = new BaseFunc();
-            break;
-
-        case 1: 
-            float f = freq / 1000000 / diffScale;
-            float h = (timeBound_R - timeBound_L) / 2; // Very rough full width at half maximum
-            float center_t = timeBound_L + h;
-            contributionFunc = new morletFunc(f, h, center_t);
-            break;
-    }
-
-    glm::vec2 rolling_sum(0.0f, 0.0f);
-    glm::vec2 positive_sum(0.f, 0.f); // TEST: Positive rolling sum
-    std::vector<float> total_positive; // TEST: Positive rolling sum
+    // TODO fixme on god real.
+    // TODO critical section iterator and reduce totalSize
+    float rollingX(0), rollingY(0);
     std::vector<float> total;
-    for (size_t i = eventBound_L; i <= eventBound_R; ++i) {
-        float x(evtParticles[i].x), y(evtParticles[i].y), t(evtParticles[i].z);
-        float polarity = evtParticles[i].w;
+    float f = freq / 1000000 / diffScale; // Not always needed but moved outside of threading to reduce divisions
+    bool isPositiveOnly = true; // TODO add to utils.cpp
+    #pragma omp parallel
+    {
+        // Select contribution function
+        std::shared_ptr<BaseFunc> contributionFunc = nullptr;
+        int choice = morlet ? 1 : 0; // Can be expanded for new contribution functions
+        switch (choice) {
+            case 0:
+                contributionFunc = std::make_shared<BaseFunc>();
+                break;
 
-        contributionFunc->setX(x);
-        contributionFunc->setY(y);
-        contributionFunc->setT(t);
-        contributionFunc->setPolarity(polarity);
-        
-        if (within_inc(x, spaceWindow.w, spaceWindow.y) && within_inc(y, spaceWindow.x, spaceWindow.z)) {
-            total.push_back(x);
-            total.push_back(y);
-            total.push_back(contributionFunc->getWeight());
+            case 1: 
+                float h = (timeBound_R - timeBound_L) * 0.5; // Very rough full width at half maximum
+                float center_t = timeBound_L + h;
+                contributionFunc = std::make_shared<morletFunc>(f, h, center_t);
+                break;
+        }
 
-            rolling_sum.x += x;
-            rolling_sum.y += y;
+        std::vector<float> localTotal;
+        #pragma omp for reduction(+ : rollingX) reduction(+ : rollingY)
+        for (int i = eventBound_L; i <= eventBound_R; ++i) {
+            float x(evtParticles[i].x), y(evtParticles[i].y), t(evtParticles[i].z);
+            float polarity = evtParticles[i].w;
 
-            if (contributionFunc->getWeight() > 0) { // TEST: Positive rolling sum
-                positive_sum.x += x;
-                positive_sum.y += y;
-                total_positive.push_back(x);
-                total_positive.push_back(y);
-                total_positive.push_back(contributionFunc->getWeight());
+            contributionFunc->setX(x);
+            contributionFunc->setY(y);
+            contributionFunc->setT(t);
+            contributionFunc->setPolarity(polarity);
+
+            if (polarity == 1 || not isPositiveOnly) {
+                if (within_inc(x, spaceWindow.w, spaceWindow.y) && within_inc(y, spaceWindow.x, spaceWindow.z)) {
+                    localTotal.push_back(x);
+                    localTotal.push_back(y);
+                    localTotal.push_back(contributionFunc->getWeight());
+
+                    rollingX += x;
+                    rollingY += y;
+                }
             }
+        }
+
+        #pragma omp critical
+        {
+            total.insert(total.end(), std::make_move_iterator(localTotal.begin()), std::make_move_iterator(localTotal.end()));
         }
     }
 
@@ -395,59 +418,39 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 
     glm::mat4 projection = glm::ortho(minXYZ.x, maxXYZ.x, minXYZ.y, maxXYZ.y);
     glUniformMatrix4fv(prog.getUniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
-    glDrawArraysInstanced(GL_POINTS, 0, 1, total.size());
+    glDrawArraysInstanced(GL_POINTS, 0, 1, static_cast<GLsizei>(total.size()));
 
     prog.unbind();
 
     glBindVertexArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-    delete contributionFunc;
 
     if (pca) {
         // Calculate covariance
-        bool is_positive_only = true;
 
         // TODO: inverse change? (make sure to always update when new files are used)
-        float mean_x = rolling_sum.x / (total.size() / 3);
-        float mean_y = rolling_sum.y / (total.size() / 3);
-
-        // TEST: mean calculated w/ only positive events
-        if (is_positive_only){
-            mean_x = positive_sum.x / (total_positive.size() / 3);
-            mean_y = positive_sum.y / (total_positive.size() / 3);
-        }
+        float inverseNumElems = 3.0f / total.size();
+        float mean_x = rollingX * inverseNumElems;
+        float mean_y = rollingY * inverseNumElems;
         
         float cov_x_x(0.0f), cov_x_y(0.0f), cov_y_y(0.0f);
-        if (is_positive_only) {
-            for (size_t i = 0; i < total_positive.size(); i += 3) {
-                float x = total_positive[i];
-                float y = total_positive[i + 1];
-    
-                cov_x_y += (x - mean_x) * (y - mean_y);
-                cov_x_x += (x - mean_x) * (x - mean_x);
-                cov_y_y += (y - mean_y) * (y - mean_y);
-            }
-        } else {
-            for (size_t i = 0; i < total.size(); i += 3) {
+        #pragma omp parallel
+        {
+            #pragma omp for reduction(+ : cov_x_y) reduction(+ : cov_x_x) reduction(+ : cov_y_y)
+            for (int i = 0; i < (int) total.size(); i += 3) {
                 float x = total[i];
                 float y = total[i + 1];
-    
+
                 cov_x_y += (x - mean_x) * (y - mean_y);
                 cov_x_x += (x - mean_x) * (x - mean_x);
                 cov_y_y += (y - mean_y) * (y - mean_y);
             }
         }
-        
-        if (is_positive_only) {
-            cov_x_y /= (total_positive.size() / 3 - 1);
-            cov_x_x /= (total_positive.size() / 3 - 1);
-            cov_y_y /= (total_positive.size() / 3 - 1);
-        } else {
-            cov_x_y /= (total.size() / 3 - 1);
-            cov_x_x /= (total.size() / 3 - 1);
-            cov_y_y /= (total.size() / 3 - 1);
-        }
-        
+
+        inverseNumElems = 1.0f / (total.size() / 3.0f - 1);
+        cov_x_y *= inverseNumElems;
+        cov_x_x *= inverseNumElems;
+        cov_y_y *= inverseNumElems;
 
         // Matrix
         float a = 1;
@@ -463,23 +466,24 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
         eigenvectors.push_back(std::sqrt(eigen2) * glm::normalize(glm::vec3(eigen2 - cov_y_y, cov_x_y, 1))); 
 
         // define position of mean and eigenvectors in cameraview 
-        glm::vec4 mean_cameraspace(mean_x, mean_y, 1.f, 1.f);
+        glm::vec4 mean_cameraspace(mean_x, mean_y, 1.0f, 1.0f);
         mean_cameraspace = projection * mean_cameraspace;
-        eigenvectors.at(0) = projection * glm::vec4(eigenvectors.at(0).x, eigenvectors.at(0).y, 0.f, 0.f);
-        eigenvectors.at(1) = projection * glm::vec4(eigenvectors.at(1).x, eigenvectors.at(1).y, 0.f, 0.f);
+        eigenvectors.at(0) = projection * glm::vec4(eigenvectors.at(0).x, eigenvectors.at(0).y, 0.0f, 0.0f);
+        eigenvectors.at(1) = projection * glm::vec4(eigenvectors.at(1).x, eigenvectors.at(1).y, 0.0f, 0.0f);
 
         // add initial position to eigenvalues
         eigenvectors.at(0) += glm::vec3(mean_cameraspace);
         eigenvectors.at(1) += glm::vec3(mean_cameraspace);
 
+        glDisable(GL_BLEND); // Line should be opaque
+        glLineWidth(5.0f); // Could make setable
         glBegin(GL_LINES);
-        //glLineWidth(2);
-        glColor3f(1.f, 0.f, 0.f);
+        glColor3f(1.0f, 0.0f, 0.0f);
         glVertex3f(mean_cameraspace.x, mean_cameraspace.y, mean_cameraspace.z);
-        glVertex3f(eigenvectors[0].x, eigenvectors[0].y, 1.f);
-        glColor3f(0.f, 1.f, 0.f);
+        glVertex3f(eigenvectors[0].x, eigenvectors[0].y, 1.0f);
+        glColor3f(0.0f, 1.0f, 0.0f);
         glVertex3f(mean_cameraspace.x, mean_cameraspace.y, mean_cameraspace.z);
-        glVertex3f(eigenvectors[1].x, eigenvectors[1].y, 1.f);
+        glVertex3f(eigenvectors[1].x, eigenvectors[1].y, 1.0f);
         glEnd();
 
     }
@@ -511,40 +515,30 @@ float EventData::getTimestamp(uint eventIndex, float oddFactor) const {
     return evtParticles[eventIndex].z / oddFactor;
 }
 
+inline bool lessVec4_t(const glm::vec4& a, const glm::vec4& b) {
+    return a.z < b.z;
+}
+
 // If timestamp does not exist return first event included in window
 uint EventData::getFirstEvent(float timestamp, float normFactor) const {
-    timestamp *= normFactor; 
+    assert(this->evtParticles.size() != 0);
+    glm::vec4 timestampVec4(0.0f, 0.0f, timestamp * normFactor, 0.0f); 
 
-    for (size_t i = 0; i < evtParticles.size(); i++) { // TODO binary search?
-        float t = evtParticles[i].z;
-
-        if (t >= timestamp) {
-            return i;
-        }
+    auto lb = std::lower_bound(evtParticles.begin(), evtParticles.end(), timestampVec4, lessVec4_t);
+    if (lb == evtParticles.end()) {
+        return static_cast<uint>(evtParticles.size() - 1);
     }
-    if(evtParticles.size()==1){
-        return 0;
-    }
-    std::cerr << "Error: getFirstEvent" << std::endl;
-    return std::numeric_limits<uint>::max();
+    return std::distance(evtParticles.begin(), lb);
 } 
 
 // If timestamp does not exist return last event included in window
 uint EventData::getLastEvent(float timestamp, float normFactor) const {
     assert(this->evtParticles.size() != 0);
-    timestamp *= normFactor; 
+    glm::vec4 timestampVec4(0.0f, 0.0f, timestamp * normFactor, 0.0f); 
 
-    for (size_t i = evtParticles.size() - 1; i >= 0; i--) { // TODO binary search?
-        float t = evtParticles[i].z;
-
-        if (t <= timestamp) {
-            return i;
-        }
-    }
-    if(evtParticles.size()==1){
+    auto ub = std::upper_bound(evtParticles.begin(), evtParticles.end(), timestampVec4, lessVec4_t);
+    if (ub == evtParticles.begin()) {
         return 0;
     }
-    std::cerr << "Error: getLastEvent" << std::endl;
-    return std::numeric_limits<uint>::max();
+    return std::distance(evtParticles.begin(), --ub);
 }
-
