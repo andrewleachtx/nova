@@ -19,7 +19,6 @@ out vec3 vPos;
 out vec3 vNor;
 out vec3 vKa; // we don't really need Blinn-Phong shading, just color
 
-// NOTE: DO NOT INTERPRET aInstPos.w AS A HOMOGENEOUS COORD!
 void main() {
     // TODO: Use an SSBO to store particle scale, and the color per particle
     // Abstract idea that we can grab the particle "idx" as the instanceID
@@ -31,12 +30,19 @@ void main() {
 
     mat4 transform = mat4(1.0);
     transform[3].xyz = aInstPos.xyz; // the current instance position
-    transform[3].xyz = aInstPos.xyz; // the current instance position
 
     // scale
     transform[0][0] = particleScale;
     transform[1][1] = particleScale;
     transform[2][2] = particleScale;
+
+    // xyza -> for now if + green - red
+    if (aInstPos.a > 1e-5) {
+        vKa = posColor;
+    }
+    else {
+        vKa = negColor;
+    }
 
     mat4 MV_transf = MV * transform;
 
@@ -44,12 +50,4 @@ void main() {
     vPos = (MV_transf * vec4(aPos, 1.0)).xyz;
 
     vNor = normalize(MV_it * vec4(aNor, 0.0)).xyz;
-
-    // xyza -> for now if + green - red
-    if (aInstPos.a > 0.5) {
-        vKa = vec3(1.0, 0.0, 0.0);
-    }
-    else {
-        vKa = vec3(0.0, 1.0, 0.0);
-    }
 }
