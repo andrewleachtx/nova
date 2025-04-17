@@ -10,12 +10,13 @@
 using std::vector, std::cout, std::endl;
 
 // do in order of declaration below
-EventData::EventData() : camera_resolution(0.0f), diffScale(0.0f), mod_freq(1),
+EventData::EventData() : camera_resolution(0.0f), diffScale(0.0f),
     earliestTimestamp(0), latestTimestamp(0), shutterType(TIME_SHUTTER), 
     timeWindow_L(0.0f), timeWindow_R(0.0f), eventWindow_L(0), eventWindow_R(0),
     timeShutterWindow_L(0.0f), timeShutterWindow_R(0.0f), eventShutterWindow_L(0),
     eventShutterWindow_R(0), spaceWindow(0.0f), minXYZ(std::numeric_limits<float>::max()),
-    maxXYZ(std::numeric_limits<float>::lowest()), center(0.0f), negColor({1.0f, 0.0f, 0.0f}), posColor({0.0f, 1.0f, 0.0f}) {}
+    maxXYZ(std::numeric_limits<float>::lowest()), center(0.0f), negColor({1.0f, 0.0f, 0.0f}), 
+    posColor({0.0f, 1.0f, 0.0f}), isPositiveOnly(false), unitType(1) {}
 
 EventData::~EventData() {
     if (instVBO) {
@@ -63,15 +64,17 @@ void EventData::initInstancing(Program &progInst) {
 void EventData::initParticlesFromFile(const std::string &filename) {
     dv::io::MonoCameraRecording reader(filename);
     camera_resolution = glm::vec2(reader.getEventResolution().value().width, reader.getEventResolution().value().height);
-    // this->mod_freq = freq;
 
     // If someone calls init again, we should always reset
     reset();
 
     // https://dv-processing.inivation.com/rel_1_7/reading_data.html#read-events-from-a-file
+    uint counter = 0; // Necessary for modFreq;
     while (reader.isRunning()) {
         if (const auto events = reader.getNextEventBatch(); events.has_value()) {
             for (auto &evt : events.value()) {
+                if (counter++ % modFreq != 0) { continue; } // TODO instead skip batch if possible
+
                 long long evtTimestamp = evt.timestamp();
                 if (evtParticles.empty()) {
                     earliestTimestamp = evtTimestamp;
@@ -245,7 +248,7 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
     prog.bind();
     MV.pushMatrix();
         for (size_t i = 0; i < evtParticles.size(); i++) {
-            if (i % this->mod_freq == 0) {
+            if (i % modFreq == 0) {
                 MV.pushMatrix();
                     MV.translate(evtParticles[i]);
                     MV.scale(particleScale);
@@ -271,11 +274,11 @@ void EventData::drawInstanced(MatrixStack &MV, MatrixStack &P, Program &progInst
     float particleScale, const glm::vec3 &lightPos, const glm::vec3 &lightColor,
     const BPMaterial &lightMat, const Mesh &meshSphere) {
     
-    if (evtParticles.empty() || mod_freq == 0) {
+    if (evtParticles.empty() || modFreq == 0) {
         return;
     }
 
-    size_t instCt = std::max(1ULL, evtParticles.size() / mod_freq);
+    size_t instCt = std::max(1ULL, evtParticles.size());
 
     // glBindVertexArray(meshSphere.getVAOID());
 
@@ -333,7 +336,7 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
     int eventBound_L, eventBound_R;
 
     // Set up point size
-    float aspectWidth = viewport_resolution.x / static_cast<float>(camera_resolution.x);
+    float aspectWidth = viewport_resolution.x / static_cast<float>(camera_resolution.x); //FIXME change name camera_res
     float aspectHeight = viewport_resolution.y / static_cast<float>(camera_resolution.y);
     glPointSize(1.0f * glm::max(aspectHeight, aspectWidth));
 
@@ -357,7 +360,6 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
     float rollingX(0), rollingY(0);
     std::vector<float> total;
     float f = freq / 1000000 / diffScale; // Not always needed but moved outside of threading to reduce divisions
-    bool isPositiveOnly = true; // TODO add to utils.cpp
     #pragma omp parallel
     {
         // Select contribution function
@@ -369,9 +371,8 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
                 break;
 
             case 1: 
-                float h = (timeBound_R - timeBound_L) * 0.5; // Very rough full width at half maximum
-                float center_t = timeBound_L + h;
-                contributionFunc = std::make_shared<morletFunc>(f, h, center_t);
+                float center_t = timeBound_L + (timeBound_R - timeBound_L) * 0.5f;;
+                contributionFunc = std::make_shared<MorletFunc>(f, center_t);
                 break;
         }
 

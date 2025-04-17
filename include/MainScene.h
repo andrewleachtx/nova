@@ -16,7 +16,7 @@ public:
 
     bool initialize(int width, int height, bool frame = false);
 
-    void resize(int width, int height);
+    void resize(int width, int height, bool frame = false);
 
     void bind() const;
 

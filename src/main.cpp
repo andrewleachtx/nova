@@ -27,6 +27,7 @@ bool g_isMainviewportHovered(false);
 bool g_keyToggles[256] = {false};
 float g_fps, g_lastRenderTime(0.0f);
 string g_resourceDir, g_dataFilepath, g_dataDir;
+bool loadFile;
 
 MainScene g_mainSceneFBO;
 FrameScene g_frameSceneFBO;
@@ -58,6 +59,8 @@ static void updateEvtDataAndCamera() {
     g_camera = Camera();
     g_camera.setInitPos(700.0f, 125.0f, 1500.0f);
     g_camera.setEvtCenter(g_eventData->getCenter());
+
+    loadFile = false;
 }
 
 static void initEvtDataAndCamera() {
@@ -70,6 +73,8 @@ static void initEvtDataAndCamera() {
     g_camera = Camera();
     g_camera.setInitPos(700.0f, 125.0f, 1500.0f);
     g_camera.setEvtCenter(g_eventData->getCenter());
+
+    loadFile = false;
 }
 
 static void init() {
@@ -221,10 +226,10 @@ static void render() {
         g_frameSceneFBO.bind();
         glViewport(0, 0, width, height); 
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-        glDisable(GL_DEPTH_TEST); // TODO necessary? Andrew: Not unless you enable it somewhere else in the loop.
+        glDisable(GL_DEPTH_TEST); 
         glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO need depth bit? Andrew: Good practice to clear buffers, doesn't hurt
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_COLOR);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
 
         glm::vec2 viewport_resolution(g_frameSceneFBO.getFBOwidth(), g_frameSceneFBO.getFBOheight());
         g_eventData->drawFrame(g_progFrame, viewport_resolution, 
@@ -240,7 +245,7 @@ static void render() {
         ImGui::NewFrame();
         
         drawGUI(g_camera, g_fps, g_particleScale, g_isMainviewportHovered, g_mainSceneFBO, 
-            g_frameSceneFBO, g_eventData, g_dataFilepath, video_name, recording, g_dataDir);
+            g_frameSceneFBO, g_eventData, g_dataFilepath, video_name, recording, g_dataDir, loadFile);
     
     // Render ImGui //
         ImGui::Render();
@@ -351,7 +356,7 @@ int main(int argc, char** argv) {
     while (!glfwWindowShouldClose(g_window)) {
         render();
         
-        if (g_dataFilepath != curFilepath) {
+        if (loadFile) {
             curFilepath = g_dataFilepath;
             updateEvtDataAndCamera();
         }
