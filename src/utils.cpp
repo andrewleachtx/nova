@@ -547,6 +547,10 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
                 datafilepath=std::move(newFilePath);
             }
         }
+        ImGui::Text("Event Frequency");    
+        ImGui::SliderInt("##modFreq", (int *) &EventData::modFreq, 1, 1000);
+        EventData::modFreq = std::max((uint) 1, EventData::modFreq);
+
 
         // TODO: Cache recent files and state?
     ImGui::End();
@@ -558,6 +562,8 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::Separator();
         ImGui::ColorEdit3("Negative Polarity Color", (float *) &evtData->getNegColor());
         ImGui::ColorEdit3("Positive Polarity Color", (float *) &evtData->getPosColor());
+        ImGui::Separator();
+        dProcessingOptions |= ImGui::SliderFloat("Event Contribution Weight", &BaseFunc::contribution, 0.0f, 1.0f);
         ImGui::Separator();
 
         // FPS
@@ -631,8 +637,6 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
                 evtData->getTimeShutterWindow_R() = rightTime - startTime;
             }
         }
-        evtData->normalizeTime();
-        frameSceneFBO.normalizeTime(evtData->getDiffScale() * EventData::TIME_CONVERSION);
  
         // Auto update controls
         dProcessingOptions |= ImGui::SliderFloat("FPS", &frameSceneFBO.getUpdateFPS(), 0, 100);
@@ -647,10 +651,13 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         frameSceneFBO.getUpdateFPS() = std::max(frameSceneFBO.getUpdateFPS(), 0.0f);
 
         // "Post" processing
+        MorletFunc::h /= normFactor;
         dProcessingOptions |= ImGui::SliderFloat("Frequency (Hz)", &frameSceneFBO.getFreq(), 0.001f, 5000); // TODO decide reasonable range
+        dProcessingOptions |= ImGui::SliderFloat("Full Width at Half Measure (ms)", &MorletFunc::h, 0.01f, (evtData->getTimeWindow_R() - evtData->getTimeWindow_L()) * 0.5);
         dProcessingOptions |= ImGui::Checkbox("Morlet Shutter", &frameSceneFBO.isMorlet());
         dProcessingOptions |= ImGui::Checkbox("PCA", &frameSceneFBO.getPCA());
         frameSceneFBO.getFreq() = std::max(frameSceneFBO.getFreq(), 0.01f);
+        MorletFunc::h = std::max(MorletFunc::h, 0.01f) * normFactor;
         ImGui::Separator();
 
         // Video (ffmpeg) controls
@@ -674,8 +681,9 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::Image((ImTextureID)frameSceneFBO.getColorTexture(), final_sz);
     ImGui::End();
 
+    evtData->normalizeTime();
+    frameSceneFBO.normalizeTime(evtData->getDiffScale() * EventData::TIME_CONVERSION);
     frameSceneFBO.setDirtyBit(dFile | dTimeWindow | dEventWindow | dSpaceWindow | dProcessingOptions);
-
 }
 
 // ???

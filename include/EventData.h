@@ -73,6 +73,7 @@ class EventData {
         static const int TIME_CONVERSION = 1000; // Could be made setable
         static const int TIME_SHUTTER = 0; // values must match ImGui::Combo order in utils.cpp
         static const int EVENT_SHUTTER = 1;
+        static inline uint modFreq = 1; // only draw the modFreq'th particle of the ones we read in
     private:
         glm::vec2 camera_resolution;
         float diffScale;
@@ -80,7 +81,6 @@ class EventData {
         // TODO: Might be better to just store a std::bitset for polarity, and something dynamic like a color
         // indicator for a (although we would need a vec3 for a full RGB)
         std::vector<glm::vec4> evtParticles; // x, y, t, polarity (false=0.0, true=1.0)
-        size_t mod_freq; // only draw the mod_freq'th particle of the ones we read in
 
         long long earliestTimestamp;
         long long latestTimestamp;
