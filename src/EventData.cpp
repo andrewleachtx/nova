@@ -15,7 +15,8 @@ EventData::EventData() : camera_resolution(0.0f), diffScale(0.0f),
     timeWindow_L(0.0f), timeWindow_R(0.0f), eventWindow_L(0), eventWindow_R(0),
     timeShutterWindow_L(0.0f), timeShutterWindow_R(0.0f), eventShutterWindow_L(0),
     eventShutterWindow_R(0), spaceWindow(0.0f), minXYZ(std::numeric_limits<float>::max()),
-    maxXYZ(std::numeric_limits<float>::lowest()), center(0.0f), negColor({1.0f, 0.0f, 0.0f}), posColor({0.0f, 1.0f, 0.0f}) {}
+    maxXYZ(std::numeric_limits<float>::lowest()), center(0.0f), negColor({1.0f, 0.0f, 0.0f}), 
+    posColor({0.0f, 1.0f, 0.0f}), isPositiveOnly(false), unitType(1) {}
 
 EventData::~EventData() {
     if (instVBO) {
@@ -359,7 +360,6 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
     float rollingX(0), rollingY(0);
     std::vector<float> total;
     float f = freq / 1000000 / diffScale; // Not always needed but moved outside of threading to reduce divisions
-    bool isPositiveOnly = false; // TODO add to utils.cpp
     #pragma omp parallel
     {
         // Select contribution function

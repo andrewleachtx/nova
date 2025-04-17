@@ -26,7 +26,35 @@ using std::shared_ptr, std::make_shared;
 using std::vector, std::string;
 using glm::vec3;
 
-// FIXME: Breaks on cancel
+static const vector<int> unitConversions({1000000000, 1000, 1}); // aedat data is in us
+static const vector<string> timeUnits({"(s)", "(ms)", "(us)"});
+static vector<string> unitLabels;
+static enum unitLabelsIndex {
+    timeWindow,
+    framePeriod,
+    shutterInitial,
+    shutterFinal,
+    FWHM
+};
+
+void initLabels() {
+    unitLabels = vector<string>({
+        "Time Window [%.3f, %.3f] (",
+        "Frame Period (",
+        "Shutter Initial (",
+        "Shutter Final (",
+        "Full Width at Half Measure (",
+    });
+}
+
+void updateUnitLabels(string formattedUnit) {
+    for (auto &elem : unitLabels) {
+        elem.replace(elem.find('('), formattedUnit.size(), formattedUnit);    
+    }
+}
+
+
+
 // FIXME: Doesn't throw an error when file doesn't exist
 // FIXME: Remove the argc / argv that takes in a file
 string OpenFileDialog(string& initialDirectory) {
@@ -436,11 +464,11 @@ static void inputTextWrapper(std::string &name) {
 }
 
 static void timeWindowWrapper(bool &dTimeWindow, shared_ptr<EventData> &evtData, FrameScene &frameSceneFBO) {
-    ImGui::Text("Time Window [%.3f, %.3f] (ms)", evtData->getTimeWindow_L(), evtData->getTimeWindow_R());
+    ImGui::Text(unitLabels[timeWindow].c_str(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
         
-    dTimeWindow |= ImGui::SliderFloat("Initial Time", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
-    dTimeWindow |= ImGui::SliderFloat("Final Time", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
-    ImGui::SliderFloat("##FramePeriod_Time", &frameSceneFBO.getFramePeriod_T(), 0, evtData->getMaxTimestamp()); 
+    dTimeWindow |= ImGui::SliderFloat("Initial Time", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp(), "%.4f");
+    dTimeWindow |= ImGui::SliderFloat("Final Time", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), evtData->getMaxTimestamp(), "%.4f");
+    ImGui::SliderFloat("##FramePeriod_Time", &frameSceneFBO.getFramePeriod_T(), 0, evtData->getMaxTimestamp(), "%.4f"); 
 
     if (ImGui::Button("-##time")) { 
         dTimeWindow = true;
@@ -454,7 +482,7 @@ static void timeWindowWrapper(bool &dTimeWindow, shared_ptr<EventData> &evtData,
         evtData->getTimeWindow_R() = evtData->getTimeWindow_R() + frameSceneFBO.getFramePeriod_T();
     }
     ImGui::SameLine();
-    ImGui::Text("Frame Period (ms)");
+    ImGui::Text(unitLabels[framePeriod].c_str());
     ImGui::Separator();
 
     evtData->getTimeWindow_L() = std::clamp(evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
@@ -505,9 +533,15 @@ static void spaceWindowWrapper(bool &dSpaceWindow, shared_ptr<EventData> &evtDat
 
 void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
     MainScene &mainSceneFBO, FrameScene &frameSceneFBO, shared_ptr<EventData> &evtData, std::string& datafilepath,
-    std::string &video_name, bool &recording, std::string& datadirectory) {
+    std::string &video_name, bool &recording, std::string& datadirectory, bool &loadFile) {
 
     drawGUIDockspace();
+
+    if (unitLabels.size() == 0) {
+        initLabels();
+        updateUnitLabels(timeUnits[evtData->getUnitType()]);
+        EventData::TIME_CONVERSION = unitConversions[evtData->getUnitType()];
+    }
 
     // Dirty bits
     bool dFile = false;
@@ -544,6 +578,7 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
             dFile = true;
             string newFilePath=OpenFileDialog(datadirectory);
             if(isValidFilePath(newFilePath)){
+                loadFile = true;
                 datafilepath=std::move(newFilePath);
             }
         }
@@ -564,6 +599,12 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         ImGui::ColorEdit3("Positive Polarity Color", (float *) &evtData->getPosColor());
         ImGui::Separator();
         dProcessingOptions |= ImGui::SliderFloat("Event Contribution Weight", &BaseFunc::contribution, 0.0f, 1.0f);
+        ImGui::Separator();
+        if (ImGui::Combo("Time Unit", &evtData->getUnitType(), "s\0ms\0us\0")) {
+            dProcessingOptions = true;
+            EventData::TIME_CONVERSION = unitConversions[evtData->getUnitType()];
+            updateUnitLabels(timeUnits[evtData->getUnitType()]);
+        }
         ImGui::Separator();
 
         // FPS
@@ -598,7 +639,7 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         spaceWindowWrapper(dSpaceWindow, evtData);
 
         ImGui::Text("Processing options");    
-        if (ImGui::Combo("Shutter", &evtData->getShutterType(), "Time Based\0Event Based")) {
+        if (ImGui::Combo("Shutter", &evtData->getShutterType(), "Time Based\0Event Based\0")) {
             dProcessingOptions = true;
             evtData->getEventShutterWindow_L() = 0;
             evtData->getEventShutterWindow_R() = 0;
@@ -607,8 +648,8 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
         }
         if (evtData->getShutterType() == EventData::TIME_SHUTTER) {
             float frameLength_T = evtData->getTimeWindow_R() - evtData->getTimeWindow_L();
-            dProcessingOptions |= ImGui::SliderFloat("Shutter Initial (ms)", &evtData->getTimeShutterWindow_L(), 0, frameLength_T); 
-            dProcessingOptions |= ImGui::SliderFloat("Shutter Final (ms)", &evtData->getTimeShutterWindow_R(), 0, frameLength_T);  
+            dProcessingOptions |= ImGui::SliderFloat(unitLabels[shutterInitial].c_str(), &evtData->getTimeShutterWindow_L(), 0, frameLength_T, "%.4f"); 
+            dProcessingOptions |= ImGui::SliderFloat(unitLabels[shutterFinal].c_str(), &evtData->getTimeShutterWindow_R(), 0, frameLength_T, "%.4f");  
             
             evtData->getTimeShutterWindow_L() = std::clamp(evtData->getTimeShutterWindow_L(), 0.0f, frameLength_T);
             evtData->getTimeShutterWindow_R() = std::clamp(evtData->getTimeShutterWindow_R(), evtData->getTimeShutterWindow_L(), frameLength_T);
@@ -652,12 +693,13 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
 
         // "Post" processing
         MorletFunc::h /= normFactor;
-        dProcessingOptions |= ImGui::SliderFloat("Frequency (Hz)", &frameSceneFBO.getFreq(), 0.001f, 5000); // TODO decide reasonable range
-        dProcessingOptions |= ImGui::SliderFloat("Full Width at Half Measure (ms)", &MorletFunc::h, 0.01f, (evtData->getTimeWindow_R() - evtData->getTimeWindow_L()) * 0.5);
+        dProcessingOptions |= ImGui::SliderFloat("Frequency (Hz)", &frameSceneFBO.getFreq(), 0.001f, 250); // TODO decide reasonable range
+        dProcessingOptions |= ImGui::SliderFloat(unitLabels[FWHM].c_str(), &MorletFunc::h, 0.0001f, (evtData->getTimeWindow_R() - evtData->getTimeWindow_L()) * 0.5, "%.4f");
         dProcessingOptions |= ImGui::Checkbox("Morlet Shutter", &frameSceneFBO.isMorlet());
         dProcessingOptions |= ImGui::Checkbox("PCA", &frameSceneFBO.getPCA());
+        dProcessingOptions |= ImGui::Checkbox("Positive Events Only", &evtData->getIsPositiveOnly());
         frameSceneFBO.getFreq() = std::max(frameSceneFBO.getFreq(), 0.01f);
-        MorletFunc::h = std::max(MorletFunc::h, 0.01f) * normFactor;
+        MorletFunc::h = std::max(MorletFunc::h, 0.0001f) * normFactor;
         ImGui::Separator();
 
         // Video (ffmpeg) controls
@@ -682,8 +724,12 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
     ImGui::End();
 
     evtData->normalizeTime();
-    frameSceneFBO.normalizeTime(evtData->getDiffScale() * EventData::TIME_CONVERSION);
+    frameSceneFBO.normalizeTime(normFactor);
     frameSceneFBO.setDirtyBit(dFile | dTimeWindow | dEventWindow | dSpaceWindow | dProcessingOptions);
+
+    if (loadFile) {
+        unitLabels.clear();
+    }
 }
 
 // ???

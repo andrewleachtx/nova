@@ -27,6 +27,7 @@ bool g_isMainviewportHovered(false);
 bool g_keyToggles[256] = {false};
 float g_fps, g_lastRenderTime(0.0f);
 string g_resourceDir, g_dataFilepath, g_dataDir;
+bool loadFile;
 
 MainScene g_mainSceneFBO;
 FrameScene g_frameSceneFBO;
@@ -58,6 +59,8 @@ static void updateEvtDataAndCamera() {
     g_camera = Camera();
     g_camera.setInitPos(700.0f, 125.0f, 1500.0f);
     g_camera.setEvtCenter(g_eventData->getCenter());
+
+    loadFile = false;
 }
 
 static void initEvtDataAndCamera() {
@@ -70,6 +73,8 @@ static void initEvtDataAndCamera() {
     g_camera = Camera();
     g_camera.setInitPos(700.0f, 125.0f, 1500.0f);
     g_camera.setEvtCenter(g_eventData->getCenter());
+
+    loadFile = false;
 }
 
 static void init() {
@@ -240,7 +245,7 @@ static void render() {
         ImGui::NewFrame();
         
         drawGUI(g_camera, g_fps, g_particleScale, g_isMainviewportHovered, g_mainSceneFBO, 
-            g_frameSceneFBO, g_eventData, g_dataFilepath, video_name, recording, g_dataDir);
+            g_frameSceneFBO, g_eventData, g_dataFilepath, video_name, recording, g_dataDir, loadFile);
     
     // Render ImGui //
         ImGui::Render();
@@ -351,7 +356,7 @@ int main(int argc, char** argv) {
     while (!glfwWindowShouldClose(g_window)) {
         render();
         
-        if (g_dataFilepath != curFilepath) {
+        if (loadFile) {
             curFilepath = g_dataFilepath;
             updateEvtDataAndCamera();
         }

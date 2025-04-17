@@ -65,12 +65,14 @@ class EventData {
         uint &getEventShutterWindow_L() { return eventShutterWindow_L; }
         uint &getEventShutterWindow_R() { return eventShutterWindow_R; }
         int &getShutterType() { return shutterType; }
+        bool &getIsPositiveOnly() { return isPositiveOnly; }
+        int &getUnitType() { return unitType; }
 
         // TODO move?
         glm::vec3 &getNegColor() { return negColor; }
         glm::vec3 &getPosColor() { return posColor; }
 
-        static const int TIME_CONVERSION = 1000; // Could be made setable
+        static inline int TIME_CONVERSION; 
         static const int TIME_SHUTTER = 0; // values must match ImGui::Combo order in utils.cpp
         static const int EVENT_SHUTTER = 1;
         static inline uint modFreq = 1; // only draw the modFreq'th particle of the ones we read in
@@ -110,6 +112,9 @@ class EventData {
         // TODO Move?
         glm::vec3 negColor;
         glm::vec3 posColor;
+
+        bool isPositiveOnly;
+        int unitType;
 };
 
 #endif // EVENT_DATA_H
