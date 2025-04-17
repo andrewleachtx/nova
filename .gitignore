@@ -40,3 +40,5 @@ output/
 *.tar.gz
 linux/
 win32/
+
+.DS_Store

@@ -56,8 +56,8 @@ bool MainScene::initialize(int w, int h, bool frame) {
     return true;
 }
 
-void MainScene::resize(int w, int h) {
-    initialize(w, h);
+void MainScene::resize(int w, int h, bool frame) { // FIXME use overriding/hiding
+    initialize(w, h, frame);
 }
 
 void MainScene::bind() const {

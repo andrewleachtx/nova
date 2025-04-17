@@ -8,7 +8,6 @@
     This will allow for a standard method to add new contribution methods and a localized place for 
     setting attributes such as ignore_polarity.
 */
-static float contribution = 0.15f;
 
 class BaseFunc {
     public:
@@ -20,6 +19,7 @@ class BaseFunc {
         void setT(float val) { t = val; };
         void setPolarity(float val) { polarity = val == 0 ? -1 : 1; };
 
+        static inline float contribution = 0.15f;
         virtual float getWeight() const { return contribution * polarity; }; // Consider including polarity
 
     protected:
@@ -30,20 +30,27 @@ class BaseFunc {
 
 };
 
-class morletFunc: public BaseFunc {
+class MorletFunc: public BaseFunc {
     public:
-        morletFunc(float f, float h, float center_t): BaseFunc(), f(f), h(h), center_t(center_t) {};
-        ~morletFunc() override = default;
+        MorletFunc(float f, float center_t): BaseFunc(), f(f), center_t(center_t) {};
+        ~MorletFunc() override = default;
 
         float getWeight() const override { 
             auto complex_result = std::exp(2.0f * std::complex<float>(0.0f, 1.0f) * std::acos(-1.0f) * f * (t - center_t)) * 
                 (float) std::exp(-4 * std::log(2) * std::pow((t - center_t), 2) / std::pow(h, 2));
-            return std::real(complex_result) * polarity * contribution;         
+            float unweighted = std::real(complex_result) * polarity;
+            if (unweighted < 0) { // Counteracts the positive weighting in fragment shader (eqaulize positive and negative weightings)  
+                return unweighted * 4 * BaseFunc::contribution;
+            }
+            else {
+                return unweighted * BaseFunc::contribution;
+            }
+            
         };
+        static inline float h = 0.35f;
 
     private:
         float f;
-        float h;
         float center_t;
 };
 
