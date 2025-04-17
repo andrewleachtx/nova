@@ -321,7 +321,7 @@ void resize_callback(GLFWwindow *window, int width, int height) {
 
     // Update the FBO
     wc->mainSceneFBO->resize(width, height);
-    wc->frameSceneFBO->resize(width, height);
+    wc->frameSceneFBO->resize(width, height, true);
     wc->mainSceneFBO->setDirtyBit(true);
     wc->frameSceneFBO->setDirtyBit(true);
 }

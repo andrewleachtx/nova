@@ -226,10 +226,10 @@ static void render() {
         g_frameSceneFBO.bind();
         glViewport(0, 0, width, height); 
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-        glDisable(GL_DEPTH_TEST); // TODO necessary? Andrew: Not unless you enable it somewhere else in the loop.
+        glDisable(GL_DEPTH_TEST); 
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_COLOR);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO need depth bit? Andrew: Good practice to clear buffers, doesn't hurt
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
 
         glm::vec2 viewport_resolution(g_frameSceneFBO.getFBOwidth(), g_frameSceneFBO.getFBOheight());
         g_eventData->drawFrame(g_progFrame, viewport_resolution, 

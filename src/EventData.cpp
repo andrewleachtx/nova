@@ -336,7 +336,7 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
     int eventBound_L, eventBound_R;
 
     // Set up point size
-    float aspectWidth = viewport_resolution.x / static_cast<float>(camera_resolution.x);
+    float aspectWidth = viewport_resolution.x / static_cast<float>(camera_resolution.x); //FIXME change name camera_res
     float aspectHeight = viewport_resolution.y / static_cast<float>(camera_resolution.y);
     glPointSize(1.0f * glm::max(aspectHeight, aspectWidth));
 
