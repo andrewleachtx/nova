@@ -74,7 +74,7 @@ ENDIF()
 
 # We are only on MSVC for now.
 if (MSVC)
-    target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE /W4)
+    target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE /W4 /wd4702 /openmp)
 else()
     target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -pedantic -Werror -Wno-error=unused-parameter -Wno-error=unused-but-set-variable>)
 endif()

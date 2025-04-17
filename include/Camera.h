@@ -35,12 +35,14 @@ class Camera {
         void setForward(const glm::vec3 &dir);
         glm::vec3 calcForward() const;
 
+        void zoom(float amt);
         void mouseClicked(float x, float y, bool shift, bool ctrl, bool alt);
         void mouseMoved(float x, float y);
 
         glm::mat4 calcLookAt() const;
 
         void applyProjectionMatrix(MatrixStack& P) const;
+        void applyOrthoMatrix(MatrixStack& P) const;
         void applyViewMatrix(MatrixStack& MV) const;
         void applyCameraMatrix(MatrixStack& MV) const;
 
@@ -53,6 +55,7 @@ class Camera {
         float t_factor;
         float r_factor;
         float zoom_factor;
+        float scroll_zoom_factor;
 
         float fovy;
         float znear;

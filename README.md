@@ -1,6 +1,10 @@
 # NOVA
 Neuromorphic Optics Visualization Application
 
+![basic image of nova](docs/img/NOVA_basic.png)
+![gif of nova with DCE](docs/img/NOVA_DCE.gif)
+![gif of nova moving](docs/img/NOVA_bb.gif)
+
 # Table of Contents
 - [NOVA](#nova)
 - [Table of Contents](#table-of-contents)
@@ -64,10 +68,21 @@ Technically, you don't need the IDE, just the MSVC compiler. You should check ma
 - Desktop development with C++
 - For safety wouldn't hurt to click MSVC 142 as well
 
+### FFmpeg
+To save the window and renders to video, [FFmpeg](https://ffmpeg.org/download.html) is used.
+
+To install:
+-run winget install Gyan.FFmpeg or
+-Download the executable manually here [here](https://ffmpeg.org/download.html).
+
+The command line installation should automatically configure PATH environment variable. 
+For manual download, ensure that environment variable is set and matches file location.
+
 ### CMake
 You will need [cmake](https://cmake.org/download/) as well if you do not have it.
 
 Note that anything that updates your path variable will not immediately work in an already open terminal. You should reload any terminals or VSCode.
+
 
 ### Package Installation (*this one takes ~1hr)
 The `--triplet=x64-windows` will install these libraries to be used in your system. If you want them local to the project (not recommended) you should remove that. 
@@ -79,6 +94,8 @@ The `--triplet=x64-windows` will install these libraries to be used in your syst
 1. Run `git submodule update --init`
 
 ### Building
+You should create a `build` directory once everytime you make major changes, or at least once per minor changes, followed by repeated recompilation in `run.ps1`.
+
 `cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" -DCMAKE_BUILD_TYPE=Release` builds in release mode, which doesn't come with debugging symbols.
 
 # Running
@@ -92,3 +109,10 @@ Run `run.ps1`. You can look at it to see what it does.
 
 # TODO
 1. Make a `vcpkg.json` manifest? It is already a pretty simple vcpkg install though.
+
+# Dependencies / References
+
+- [LANL](https://lanl.gov/) for project idea, guidance, and support with features and logic
+- [OpenGL](https://www.opengl.org/) and [Dear ImGui](https://github.com/ocornut/imgui)
+- Various other libraries as found in files (GLFW, GLEW, GLM, Eigen, CMake, dv-processing, fmt, ffmpeg, etc.)
+- [Dr. Shinjiro Sueda](https://people.engr.tamu.edu/sueda/index.html) for teaching us graphics and for any course-given skeleton code used in any cited files headers

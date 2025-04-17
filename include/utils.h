@@ -18,9 +18,15 @@ struct WindowContext {
     bool* key_toggles;
     bool* is_mainViewportHovered;
     MainScene* mainSceneFBO;
+    MainScene* frameSceneFBO;
 };
 
+std::string OpenFileDialog();
+
 Program genPhongProg(const std::string &resource_dir);
+Program genInstProg(const std::string &resource_dir);
+Program genBasicProg(const std::string &resource_dir);
+
 void sendToPhongShader(const Program &prog, const MatrixStack &P, const MatrixStack &MV, const vec3 &lightPos, const vec3 &lightCol, const BPMaterial &mat);
 
 // GLFW Callbacks //
@@ -37,12 +43,13 @@ bool genBiggestWindow(GLFWwindow *&window, const std::string &window_name="GLFW 
 void initImGuiStyle(ImGuiStyle &style);
 void drawGUIDockspace();
 void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
-    MainScene &mainSceneFBO, std::shared_ptr<EventData> &evtData);
+    MainScene &mainSceneFBO, FrameScene &frameScenceFBO, std::shared_ptr<EventData> &evtData, std::string &datafilepath, 
+    std::string &video_name, bool &recording, std::string& datadirectory);
 
 float randFloat();
 glm::vec3 randXYZ();
+void genVBO(GLuint &vbo, size_t num_bytes, size_t draw_type=GL_STATIC_DRAW);
 
-// Helpers & Debug //
 #define printvec3(var) pv3(#var, var)
 inline void pv3(const char *varname, const glm::vec3 &vec) {
     printf("%s: %f, %f, %f\n", varname, vec.x, vec.y, vec.z);

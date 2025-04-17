@@ -4,3 +4,4 @@
 *.h text eol=crlf
 *.py text eol=crlf
 *.md text eol=crlf
+*.glsl text eol=crlf

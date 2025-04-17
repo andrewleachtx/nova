@@ -6,9 +6,6 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# ./build/Debug/NOVA.exe "./resources" "./data/test_data.aedat4"
-# ./build/Debug/NOVA.exe "./resources" "./data/lights.aedat4"
-
-./build/Release/NOVA.exe "./resources" "./data/test_data.aedat4"
-# ./build/Release/NOVA.exe "./resources" "./data/1.5V_withoutpapertowel_2400RPM.aedat4"
-# ./build/Release/NOVA.exe "./resources" "./data/lights.aedat4"
+# ./build/Debug/NOVA.exe "./resources" "./data/1.5V_withoutpapertowel_2400RPM.aedat4"
+# Data path needs to be absolute, but it defaults with an invalid path
+./build/Release/NOVA.exe "./resources" "C:/nova/data"
