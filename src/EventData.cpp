@@ -426,8 +426,6 @@ void EventData::drawFrame(Program &prog, glm::vec2 viewport_resolution, bool mor
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     if (pca) {
-        // Calculate covariance
-
         // TODO: inverse change? (make sure to always update when new files are used)
         float inverseNumElems = 3.0f / total.size();
         float mean_x = rollingX * inverseNumElems;

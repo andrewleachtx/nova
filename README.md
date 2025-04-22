@@ -20,7 +20,6 @@ Neuromorphic Optics Visualization Application
 - [Running](#running)
   - [Using Visual Studio GUI](#using-visual-studio-gui)
   - [run.ps1](#runps1)
-- [TODO](#todo)
 
 # Dev Setup
 ## Making your dev branch
@@ -106,9 +105,6 @@ If you want to use VS for debugging, you can run `explorer.exe .` in your termin
 `.ps1` files are PowerShell scripts. Open PowerShell in the terminal (type `powershell.exe` if it isn't the native Windows VSCode terminal).
 
 Run `run.ps1`. You can look at it to see what it does.
-
-# TODO
-1. Make a `vcpkg.json` manifest? It is already a pretty simple vcpkg install though.
 
 # Dependencies / References
 
