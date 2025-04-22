@@ -1,18 +1,25 @@
 # NOVA
 Neuromorphic Optics Visualization Application
 
+See the [table of contents](#table-of-contents) for installation instructions.
+
+# Images
+
 ![basic image of nova](docs/img/NOVA_basic.png)
 ![gif of nova with DCE](docs/img/NOVA_DCE.gif)
 ![gif of nova moving](docs/img/NOVA_bb.gif)
 
 # Table of Contents
 - [NOVA](#nova)
+- [Images](#images)
 - [Table of Contents](#table-of-contents)
-- [Dev Setup](#dev-setup)
+- [Installing for users](#installing-for-users)
+- [Installing for developers](#installing-for-developers)
   - [Making your dev branch](#making-your-dev-branch)
   - [Dependencies](#dependencies)
     - [VCPKG](#vcpkg)
     - [Visual Studio for MSVC](#visual-studio-for-msvc)
+    - [FFmpeg](#ffmpeg)
     - [CMake](#cmake)
     - [Package Installation (\*this one takes ~1hr)](#package-installation-this-one-takes-1hr)
     - [Initialize Submodules](#initialize-submodules)
@@ -21,8 +28,12 @@ Neuromorphic Optics Visualization Application
   - [Using Visual Studio GUI](#using-visual-studio-gui)
   - [run.ps1](#runps1)
 - [TODO](#todo)
+- [Dependencies / References](#dependencies--references)
 
-# Dev Setup
+# Installing for users
+Our most recent package should be available in the releases section of the repo, with a `.zip` containing instructions to run. Thank you!
+
+# Installing for developers
 ## Making your dev branch
 Don't work off main - make a branch off dev `dev-<yourname>` with
 ```
@@ -71,18 +82,16 @@ Technically, you don't need the IDE, just the MSVC compiler. You should check ma
 ### FFmpeg
 To save the window and renders to video, [FFmpeg](https://ffmpeg.org/download.html) is used.
 
-To install:
--run winget install Gyan.FFmpeg or
--Download the executable manually here [here](https://ffmpeg.org/download.html).
+1. From `cmd` run `winget install Gyan.FFmpeg` or download the FFmpeg executable manually [here](https://ffmpeg.org/download.html).
 
-The command line installation should automatically configure PATH environment variable. 
-For manual download, ensure that environment variable is set and matches file location.
+The command line installation should automatically configure FFmpeg in your `PATH` variable.
+
+If you choose to manually download, ensure that environment variable is set and matches the file location. You can test this by opening a new terminal and typing `ffmpeg`.
 
 ### CMake
 You will need [cmake](https://cmake.org/download/) as well if you do not have it.
 
 Note that anything that updates your path variable will not immediately work in an already open terminal. You should reload any terminals or VSCode.
-
 
 ### Package Installation (*this one takes ~1hr)
 The `--triplet=x64-windows` will install these libraries to be used in your system. If you want them local to the project (not recommended) you should remove that. 

@@ -41,4 +41,6 @@ output/
 linux/
 win32/
 
+package/
+
 .DS_Store
