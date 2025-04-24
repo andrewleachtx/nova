@@ -3,7 +3,7 @@ name: Deploy Doxygen Docs to GitHub Pages
 on:
   push:
     branches:
-      - main
+      - dev-andrew
 
 permissions:
   contents: write
