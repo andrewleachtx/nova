@@ -14,12 +14,31 @@ public:
     MainScene();
     ~MainScene();
 
+    /**
+     * @brief Initialize the FBO with the specifications of the GLFW frame.
+     * @param width 
+     * @param height 
+     * @param frame 
+     * @return bool true if successful
+     */
     bool initialize(int width, int height, bool frame = false);
 
+    /**
+     * @brief Resizes / reinitializes with the callback on user resize
+     * @param width 
+     * @param height 
+     * @param frame 
+     */
     void resize(int width, int height, bool frame = false);
 
+    /**
+     * @brief Binds the FBO for rendering. This is necessary to render to the texture.
+     */
     void bind() const;
 
+    /**
+     * @brief Unbinds the FBO. This is necessary to render to the screen.
+     */
     void unbind() const;
 
     GLuint getColorTexture() const;

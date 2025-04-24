@@ -25,19 +25,64 @@ class EventData {
         EventData();
         ~EventData();
 
+        /**
+        * @brief Resets the EventData object to its initial state. Clears the vector of particles and resets all other member variables.
+        */
         void reset();
+        
+        /**
+         * @brief Initializes instancing (https://learnopengl.com/Advanced-OpenGL/Instancing) for the event particles using the provided shader program.
+         * @param progInst
+         */
         void initInstancing(Program &instancingProg);
-        void initParticlesFromFile(const std::string &filename); // TODO speedup and dynamic
+        
+        /**
+         * @brief Initializes the particles from a file. The file should be in the format of aedat4.
+         * @param filename 
+         */
+        void initParticlesFromFile(const std::string &filename);
+
+        /**
+         * @brief Initializes the EventData object in an empty state; upon initialization, no particles are loaded.
+         */
         void initParticlesEmpty();
 
+        /**
+         * @brief Draw the bounding box wireframe for the event data.
+         * @param MV 
+         * @param P 
+         * @param progBasic 
+         */
         void drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &progBasic);
+        
+        /**
+         * @brief Draw event data particles in serial with each particle as a sphere mesh.
+         * @param MV 
+         * @param P 
+         * @param prog 
+         * @param particleScale 
+         * @param lightPos 
+         * @param lightColor 
+         * @param lightMat 
+         * @param meshSphere 
+         */
         void draw(MatrixStack &MV, MatrixStack &P, Program &prog,
             float particleScale, const glm::vec3 &lightPos, const glm::vec3 &lightColor,
             const BPMaterial &lightMat, const Mesh &meshSphere);
+            
+        /**
+         * @brief Draw event data particles with instancing using gl primitive points
+         * @param MV 
+         * @param P 
+         * @param progInst 
+         * @param progBasic 
+         * @param particleScale 
+         */
         void drawInstanced(MatrixStack &MV, MatrixStack &P, Program &progInst, Program &progBasic,
-            float particleScale, const glm::vec3 &lightPos, const glm::vec3 &lightColor,
-            const BPMaterial &lightMat, const Mesh &meshSphere);
+            float particleScale);
         
+        
+                
         /**
          * @brief Computes the weight of valid events (within shutter) and passes them into the vertex to render DCE
          * @param prog bound to access the associated shaders and uniforms
@@ -82,7 +127,7 @@ class EventData {
 
         const float getDiffScale() const { return diffScale; }
         const glm::vec3 &getCenter() const { return center; }
-        const glm::vec3 getMin_XYZ() const { return minXYZ; } // TOOD maybe manipulate window instead
+        const glm::vec3 getMin_XYZ() const { return minXYZ; }
         const glm::vec3 getMax_XYZ() const { return maxXYZ; }
         const float &getMaxTimestamp() const { return maxXYZ.z; }
         const float &getMinTimestamp() const { return minXYZ.z; }

@@ -162,8 +162,6 @@ Program genInstProg(const std::string &resource_dir) {
     prog.addUniform("MV_it");
     
     prog.addUniform("particleScale");
-    prog.addUniform("lightPos");
-    prog.addUniform("lightCol");
 
     prog.addUniform("negColor");
     prog.addUniform("posColor");
