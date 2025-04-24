@@ -20,6 +20,9 @@
     converting to float.
 */
 
+/**
+ * @brief Primary wrapper class to store point cloud event data read in from a .aedat4 file.
+ */
 class EventData {
     public:
         EventData();
