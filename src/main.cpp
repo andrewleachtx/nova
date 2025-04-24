@@ -171,9 +171,7 @@ static void render() {
         //     g_lightMat, g_meshSphere
         // );
         g_eventData->drawInstanced(MV, P, g_progInst,
-            g_progBasic, g_particleScale,
-            g_lightPos, g_lightCol,
-            g_lightMat, g_meshSphere
+            g_progBasic, g_particleScale
         );
 
     P.popMatrix();

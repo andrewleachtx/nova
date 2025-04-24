@@ -35,6 +35,10 @@ class MorletFunc: public BaseFunc {
         MorletFunc(float f, float center_t): BaseFunc(), f(f), center_t(center_t) {};
         ~MorletFunc() override = default;
 
+        /**
+         * @brief Handles morlet shutter contribution weights based on set attributes
+         * @return float: morelet wavelet value at t attribute value multiplied by base contribution
+         */
         float getWeight() const override { 
             auto complex_result = std::exp(2.0f * std::complex<float>(0.0f, 1.0f) * std::acos(-1.0f) * f * (t - center_t)) * 
                 (float) std::exp(-4 * std::log(2) * std::pow((t - center_t), 2) / std::pow(h, 2));

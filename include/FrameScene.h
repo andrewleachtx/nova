@@ -15,8 +15,23 @@ public:
         framePeriod_T(0.0f), framePeriod_E(0)  {}
     ~FrameScene() {}
 
+    /**
+     * @brief Calls MainScene's initialize function and specifies the correct datatype to be used
+     * @param inputWidth 
+     * @param inputHeight 
+     * @return boolean whether initialization succeeded
+     */
     bool initialize(int inputWidth, int inputHeight) { return MainScene::initialize(inputWidth, inputHeight, true); };
+    
+    /**
+     * @brief Used by utils/drawGUI to allow for changing back into time from specified unit of time
+     * @param factor controls which unit the attributes are transformed from
+     */
     void normalizeTime(float factor) { framePeriod_T *= factor; }
+    /**
+     * @brief Used by utils/drawGUI to allow for changing from normalized time into a specified unit of time
+     * @param factor controls which unit the attributes are transformed into
+     */
     void oddizeTime(float factor) { framePeriod_T /= factor; }
 
     bool &isMorlet() { return morlet; }

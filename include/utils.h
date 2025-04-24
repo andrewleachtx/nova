@@ -42,6 +42,22 @@ bool genBiggestWindow(GLFWwindow *&window, const std::string &window_name="GLFW 
 // ImGui //
 void initImGuiStyle(ImGuiStyle &style);
 void drawGUIDockspace();
+
+/**
+ * @brief Calls drawGUIDockspace. Displays all FBOs and processing options. Populates parameter classes with user input
+ * @param camera 
+ * @param fps 
+ * @param particle_scale 
+ * @param is_mainViewportHovered 
+ * @param mainSceneFBO 
+ * @param frameScenceFBO 
+ * @param evtData 
+ * @param datafilepath 
+ * @param video_name 
+ * @param recording 
+ * @param datadirectory 
+ * @param loadFile 
+ */
 void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
     MainScene &mainSceneFBO, FrameScene &frameScenceFBO, std::shared_ptr<EventData> &evtData, std::string &datafilepath, 
     std::string &video_name, bool &recording, std::string& datadirectory, bool &loadFile);

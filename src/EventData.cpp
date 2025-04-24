@@ -43,7 +43,6 @@ void EventData::reset() {
     }
 }
 
-// https://learnopengl.com/Advanced-OpenGL/Instancing
 void EventData::initInstancing(Program &progInst) {
     // Generate / initialize a VBO here. GL_STATIC_DRAW may be better, should test
     genVBO(instVBO, evtParticles.size() * sizeof(glm::vec4), GL_DYNAMIC_DRAW);
@@ -122,7 +121,6 @@ void EventData::initParticlesEmpty() {
     // If someone calls init again, we should always reset
     reset();
 
-    
     evtParticles.push_back(glm::vec4(0.0f,0.0f,1.0f,0.0f));
 
     earliestTimestamp=1.0f;
@@ -271,8 +269,7 @@ void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
 }
 
 void EventData::drawInstanced(MatrixStack &MV, MatrixStack &P, Program &progInst, Program &progBasic,
-    float particleScale, const glm::vec3 &lightPos, const glm::vec3 &lightColor,
-    const BPMaterial &lightMat, const Mesh &meshSphere) {
+    float particleScale) {
     
     if (evtParticles.empty() || modFreq == 0) {
         return;
@@ -300,8 +297,6 @@ void EventData::drawInstanced(MatrixStack &MV, MatrixStack &P, Program &progInst
     glUniformMatrix4fv(progInst.getUniform("MV"), 1, GL_FALSE, glm::value_ptr(MV.topMatrix()));
     glUniformMatrix4fv(progInst.getUniform("MV_it"), 1, GL_FALSE, 
                       glm::value_ptr(glm::inverse(glm::transpose(MV.topMatrix()))));
-    glUniform3fv(progInst.getUniform("lightPos"), 1, glm::value_ptr(lightPos));
-    glUniform3fv(progInst.getUniform("lightCol"), 1, glm::value_ptr(lightColor));
     glUniform1f(progInst.getUniform("particleScale"), particleScale);
     glUniform3fv(progInst.getUniform("negColor"), 1, glm::value_ptr(negColor));
     glUniform3fv(progInst.getUniform("posColor"), 1, glm::value_ptr(posColor));

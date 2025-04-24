@@ -34,7 +34,8 @@ static enum unitLabelsIndex {
     framePeriod,
     shutterInitial,
     shutterFinal,
-    FWHM
+    FWHM,
+    dTime
 };
 
 void initLabels() {
@@ -44,6 +45,7 @@ void initLabels() {
         "Shutter Initial (",
         "Shutter Final (",
         "Full Width at Half Measure (",
+        "Final - Initial Time: %.3f ("
     });
 }
 
@@ -160,8 +162,6 @@ Program genInstProg(const std::string &resource_dir) {
     prog.addUniform("MV_it");
     
     prog.addUniform("particleScale");
-    prog.addUniform("lightPos");
-    prog.addUniform("lightCol");
 
     prog.addUniform("negColor");
     prog.addUniform("posColor");
@@ -465,7 +465,8 @@ static void inputTextWrapper(std::string &name) {
 
 static void timeWindowWrapper(bool &dTimeWindow, shared_ptr<EventData> &evtData, FrameScene &frameSceneFBO) {
     ImGui::Text(unitLabels[timeWindow].c_str(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
-        
+    ImGui::Text(unitLabels[dTime].c_str(), evtData->getTimeWindow_R() - evtData->getTimeWindow_L());
+
     dTimeWindow |= ImGui::SliderFloat("Initial Time", &evtData->getTimeWindow_L(), evtData->getMinTimestamp(), evtData->getMaxTimestamp(), "%.4f");
     dTimeWindow |= ImGui::SliderFloat("Final Time", &evtData->getTimeWindow_R(), evtData->getMinTimestamp(), evtData->getMaxTimestamp(), "%.4f");
     ImGui::SliderFloat("##FramePeriod_Time", &frameSceneFBO.getFramePeriod_T(), 0, evtData->getMaxTimestamp(), "%.4f"); 
@@ -492,6 +493,7 @@ static void timeWindowWrapper(bool &dTimeWindow, shared_ptr<EventData> &evtData,
 
 static void eventWindowWrapper(bool &dEventWindow, shared_ptr<EventData> &evtData, FrameScene &frameSceneFBO) {
     ImGui::Text("Event Window [%d, %d]", 0, evtData->getMaxEvent() - 1);
+    ImGui::Text("Final - Initial Event: %d", evtData->getEventWindow_R() - evtData->getEventWindow_L());
         
     dEventWindow |= ImGui::SliderInt("Initial Event", (int *) &evtData->getEventWindow_L(), 0, evtData->getMaxEvent() - 1);
     dEventWindow |= ImGui::SliderInt("Final Event", (int *) &evtData->getEventWindow_R(), 0, evtData->getMaxEvent() - 1);

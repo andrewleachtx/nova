@@ -25,31 +25,109 @@ class EventData {
         EventData();
         ~EventData();
 
+        /**
+        * @brief Resets the EventData object to its initial state. Clears the vector of particles and resets all other member variables.
+        */
         void reset();
+        
+        /**
+         * @brief Initializes instancing (https://learnopengl.com/Advanced-OpenGL/Instancing) for the event particles using the provided shader program.
+         * @param progInst
+         */
         void initInstancing(Program &instancingProg);
-        void initParticlesFromFile(const std::string &filename); // TODO speedup and dynamic
+        
+        /**
+         * @brief Initializes the particles from a file. The file should be in the format of aedat4.
+         * @param filename 
+         */
+        void initParticlesFromFile(const std::string &filename);
+
+        /**
+         * @brief Initializes the EventData object in an empty state; upon initialization, no particles are loaded.
+         */
         void initParticlesEmpty();
 
+        /**
+         * @brief Draw the bounding box wireframe for the event data.
+         * @param MV 
+         * @param P 
+         * @param progBasic 
+         */
         void drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Program &progBasic);
+        
+        /**
+         * @brief Draw event data particles in serial with each particle as a sphere mesh.
+         * @param MV 
+         * @param P 
+         * @param prog 
+         * @param particleScale 
+         * @param lightPos 
+         * @param lightColor 
+         * @param lightMat 
+         * @param meshSphere 
+         */
         void draw(MatrixStack &MV, MatrixStack &P, Program &prog,
             float particleScale, const glm::vec3 &lightPos, const glm::vec3 &lightColor,
             const BPMaterial &lightMat, const Mesh &meshSphere);
+            
+        /**
+         * @brief Draw event data particles with instancing using gl primitive points
+         * @param MV 
+         * @param P 
+         * @param progInst 
+         * @param progBasic 
+         * @param particleScale 
+         */
         void drawInstanced(MatrixStack &MV, MatrixStack &P, Program &progInst, Program &progBasic,
-            float particleScale, const glm::vec3 &lightPos, const glm::vec3 &lightColor,
-            const BPMaterial &lightMat, const Mesh &meshSphere);
+            float particleScale);
+        
+        
+                
+        /**
+         * @brief Computes the weight of valid events (within shutter) and passes them into the vertex to render DCE
+         * @param prog bound to access the associated shaders and uniforms
+         * @param viewport_resolution used to compute needed point size
+         * @param morlet specifies the contribution function to be used
+         * @param freq used to calculate morlet shutter contribution if needed
+         * @param pca specifies whether pca is computed and displayed
+         */
         void drawFrame(Program &prog, glm::vec2 viewport_resolution, 
             bool morlet, float freq, bool pca);
 
+        /**
+         * @brief Used by utils/drawGUI to allow for changing back into time from specified unit of time
+         */
         void normalizeTime();
+        /**
+         * @brief Used by utils/drawGUI to allow for changing from normalized time into a specified unit of time
+         */
         void oddizeTime();
 
+        /**
+         * @brief Returns the timestamp associated with the event index
+         * @param eventIndex 
+         * @param oddFactor controls whether the timestamp is normalized or in a specific unit 
+         * @return float 
+         */
         float getTimestamp(uint eventIndex, float oddFactor = 1.0f) const;
+        /**
+         * @brief Get the first event index after or equal to the timestamp
+         * @param timestamp 
+         * @param normFactor controls whether the timestamp must be normalized
+         * @return uint 
+         */
         uint getFirstEvent(float timestamp, float normFactor = 1.0f) const;
+        /**
+         * @brief Get the first event index before or equal to the timestamp
+         * @param timestamp 
+         * @param normFactor controls whether the timestamp must be normalized
+         * @return uint 
+         */
         uint getLastEvent(float timestamp, float normFactor = 1.0f) const;
 
         const float getDiffScale() const { return diffScale; }
         const glm::vec3 &getCenter() const { return center; }
-        const glm::vec3 getMin_XYZ() const { return minXYZ; } // TOOD maybe manipulate window instead
+        const glm::vec3 getMin_XYZ() const { return minXYZ; }
         const glm::vec3 getMax_XYZ() const { return maxXYZ; }
         const float &getMaxTimestamp() const { return maxXYZ.z; }
         const float &getMinTimestamp() const { return minXYZ.z; }
@@ -68,7 +146,6 @@ class EventData {
         bool &getIsPositiveOnly() { return isPositiveOnly; }
         int &getUnitType() { return unitType; }
 
-        // TODO move?
         glm::vec3 &getNegColor() { return negColor; }
         glm::vec3 &getPosColor() { return posColor; }
 
@@ -109,7 +186,6 @@ class EventData {
         // Instancing
         GLuint instVBO;
 
-        // TODO Move?
         glm::vec3 negColor;
         glm::vec3 posColor;
 
