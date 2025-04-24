@@ -100,6 +100,8 @@ The `--triplet=x64-windows` will install these libraries to be used in your syst
 2. You will need [cmake](https://cmake.org/download/) as well if you do not have it.
 
 ### Initialize Submodules
+If you didn't pull with the `--recursive` flag, get the submodules.
+
 1. Run `git submodule update --init`
 
 ### Building
