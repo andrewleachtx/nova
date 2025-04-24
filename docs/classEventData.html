@@ -76,12 +76,17 @@ $(function() {
   <div class="headertitle"><div class="title">EventData Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Primary wrapper class to store point cloud event data read in from a .aedat4 file.  
+ <a href="classEventData.html#details">More...</a></p>
+
+<p><code>#include &lt;<a class="el" href="EventData_8h_source.html">EventData.h</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:ae2892c77f99856e72603162d7824b95a" id="r_ae2892c77f99856e72603162d7824b95a"><td class="memItemLeft" align="right" valign="top"><a id="ae2892c77f99856e72603162d7824b95a" name="ae2892c77f99856e72603162d7824b95a"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr>
-<tr class="memdesc:ae2892c77f99856e72603162d7824b95a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Resets the <a class="el" href="classEventData.html">EventData</a> object to its initial state. Clears the vector of particles and resets all other member variables. <br /></td></tr>
+<tr class="memdesc:ae2892c77f99856e72603162d7824b95a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Resets the <a class="el" href="classEventData.html" title="Primary wrapper class to store point cloud event data read in from a .aedat4 file.">EventData</a> object to its initial state. Clears the vector of particles and resets all other member variables. <br /></td></tr>
 <tr class="separator:ae2892c77f99856e72603162d7824b95a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9166d571f356576b4ecb9699f7b8a18a" id="r_a9166d571f356576b4ecb9699f7b8a18a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classEventData.html#a9166d571f356576b4ecb9699f7b8a18a">initInstancing</a> (<a class="el" href="classProgram.html">Program</a> &amp;instancingProg)</td></tr>
 <tr class="memdesc:a9166d571f356576b4ecb9699f7b8a18a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes instancing (<a href="https://learnopengl.com/Advanced-OpenGL/Instancing">https://learnopengl.com/Advanced-OpenGL/Instancing</a>) for the event particles using the provided shader program.  <br /></td></tr>
@@ -91,7 +96,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
 <tr class="separator:af2adcca4581ea45aa281c514d252ac59"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a557c6367d8b42e4b369eb2b44781cefe" id="r_a557c6367d8b42e4b369eb2b44781cefe"><td class="memItemLeft" align="right" valign="top"><a id="a557c6367d8b42e4b369eb2b44781cefe" name="a557c6367d8b42e4b369eb2b44781cefe"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>initParticlesEmpty</b> ()</td></tr>
-<tr class="memdesc:a557c6367d8b42e4b369eb2b44781cefe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes the <a class="el" href="classEventData.html">EventData</a> object in an empty state; upon initialization, no particles are loaded. <br /></td></tr>
+<tr class="memdesc:a557c6367d8b42e4b369eb2b44781cefe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes the <a class="el" href="classEventData.html" title="Primary wrapper class to store point cloud event data read in from a .aedat4 file.">EventData</a> object in an empty state; upon initialization, no particles are loaded. <br /></td></tr>
 <tr class="separator:a557c6367d8b42e4b369eb2b44781cefe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a727327547e9b6d3dd37e8db09f1e6aa9" id="r_a727327547e9b6d3dd37e8db09f1e6aa9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classEventData.html#a727327547e9b6d3dd37e8db09f1e6aa9">drawBoundingBoxWireframe</a> (<a class="el" href="classMatrixStack.html">MatrixStack</a> &amp;MV, <a class="el" href="classMatrixStack.html">MatrixStack</a> &amp;P, <a class="el" href="classProgram.html">Program</a> &amp;progBasic)</td></tr>
 <tr class="memdesc:a727327547e9b6d3dd37e8db09f1e6aa9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Draw the bounding box wireframe for the event data.  <br /></td></tr>
@@ -201,7 +206,9 @@ static const int&#160;</td><td class="memItemRight" valign="bottom"><b>EVENT_SHU
 static uint&#160;</td><td class="memItemRight" valign="bottom"><b>modFreq</b> = 1</td></tr>
 <tr class="separator:ae52edd8d52a3f627a41707174598f30c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Member Function Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Primary wrapper class to store point cloud event data read in from a .aedat4 file. </p>
+</div><h2 class="groupheader">Member Function Documentation</h2>
 <a id="a06d78268d8988ee855ccaa7e3fd80089" name="a06d78268d8988ee855ccaa7e3fd80089"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a06d78268d8988ee855ccaa7e3fd80089">&#9670;&#160;</a></span>draw()</h2>
 
