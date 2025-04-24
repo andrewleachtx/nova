@@ -42,5 +42,6 @@ linux/
 win32/
 
 package/
+docs/
 
 .DS_Store

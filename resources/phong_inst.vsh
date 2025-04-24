@@ -5,8 +5,6 @@ uniform mat4 MV;
 uniform mat4 MV_it;
 
 uniform float particleScale;
-uniform vec3 lightPos; // TODO: Needed?
-uniform vec3 lightCol;
 
 uniform vec3 negColor;
 uniform vec3 posColor;
