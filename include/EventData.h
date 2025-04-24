@@ -37,14 +37,47 @@ class EventData {
         void drawInstanced(MatrixStack &MV, MatrixStack &P, Program &progInst, Program &progBasic,
             float particleScale, const glm::vec3 &lightPos, const glm::vec3 &lightColor,
             const BPMaterial &lightMat, const Mesh &meshSphere);
+        
+        /**
+         * @brief Computes the weight of valid events (within shutter) and passes them into the vertex to render DCE
+         * @param prog bound to access the associated shaders and uniforms
+         * @param viewport_resolution used to compute needed point size
+         * @param morlet specifies the contribution function to be used
+         * @param freq used to calculate morlet shutter contribution if needed
+         * @param pca specifies whether pca is computed and displayed
+         */
         void drawFrame(Program &prog, glm::vec2 viewport_resolution, 
             bool morlet, float freq, bool pca);
 
+        /**
+         * @brief Used by utils/drawGUI to allow for changing back into time from specified unit of time
+         */
         void normalizeTime();
+        /**
+         * @brief Used by utils/drawGUI to allow for changing from normalized time into a specified unit of time
+         */
         void oddizeTime();
 
+        /**
+         * @brief Returns the timestamp associated with the event index
+         * @param eventIndex 
+         * @param oddFactor controls whether the timestamp is normalized or in a specific unit 
+         * @return float 
+         */
         float getTimestamp(uint eventIndex, float oddFactor = 1.0f) const;
+        /**
+         * @brief Get the first event index after or equal to the timestamp
+         * @param timestamp 
+         * @param normFactor controls whether the timestamp must be normalized
+         * @return uint 
+         */
         uint getFirstEvent(float timestamp, float normFactor = 1.0f) const;
+        /**
+         * @brief Get the first event index before or equal to the timestamp
+         * @param timestamp 
+         * @param normFactor controls whether the timestamp must be normalized
+         * @return uint 
+         */
         uint getLastEvent(float timestamp, float normFactor = 1.0f) const;
 
         const float getDiffScale() const { return diffScale; }
@@ -68,7 +101,6 @@ class EventData {
         bool &getIsPositiveOnly() { return isPositiveOnly; }
         int &getUnitType() { return unitType; }
 
-        // TODO move?
         glm::vec3 &getNegColor() { return negColor; }
         glm::vec3 &getPosColor() { return posColor; }
 
@@ -109,7 +141,6 @@ class EventData {
         // Instancing
         GLuint instVBO;
 
-        // TODO Move?
         glm::vec3 negColor;
         glm::vec3 posColor;
 
