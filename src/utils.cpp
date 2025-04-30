@@ -29,7 +29,7 @@ using glm::vec3;
 static const vector<int> unitConversions({1000000000, 1000, 1}); // aedat data is in us
 static const vector<string> timeUnits({"(s)", "(ms)", "(us)"});
 static vector<string> unitLabels;
-static enum unitLabelsIndex {
+enum unitLabelsIndex {
     timeWindow,
     framePeriod,
     shutterInitial,
@@ -204,7 +204,7 @@ void sendToPhongShader(const Program& prog, const MatrixStack& P, const MatrixSt
 
 // This function is called when a GLFW error occurs
 void error_callback(int error, const char *description) {
-    cerr << "Error: " << description << endl;
+    cerr << "Error Code: " << error << " Description: " << description << endl;
 }
 
 // This function is called when a key is pressed
@@ -463,7 +463,7 @@ static void inputTextWrapper(std::string &name) {
     name = buf;
 }
 
-static void timeWindowWrapper(bool &dTimeWindow, shared_ptr<EventData> &evtData, FrameScene &frameSceneFBO) {
+static void timeWindowWrapper(bool &dTimeWindow, shared_ptr<EventData> &evtData, FrameViewportFBO &frameSceneFBO) {
     ImGui::Text(unitLabels[timeWindow].c_str(), evtData->getMinTimestamp(), evtData->getMaxTimestamp());
     ImGui::Text(unitLabels[dTime].c_str(), evtData->getTimeWindow_R() - evtData->getTimeWindow_L());
 
@@ -491,7 +491,7 @@ static void timeWindowWrapper(bool &dTimeWindow, shared_ptr<EventData> &evtData,
     frameSceneFBO.getFramePeriod_T() = std::max(frameSceneFBO.getFramePeriod_T(), 0.0f);
 }
 
-static void eventWindowWrapper(bool &dEventWindow, shared_ptr<EventData> &evtData, FrameScene &frameSceneFBO) {
+static void eventWindowWrapper(bool &dEventWindow, shared_ptr<EventData> &evtData, FrameViewportFBO &frameSceneFBO) {
     ImGui::Text("Event Window [%d, %d]", 0, evtData->getMaxEvent() - 1);
     ImGui::Text("Final - Initial Event: %d", evtData->getEventWindow_R() - evtData->getEventWindow_L());
         
@@ -534,7 +534,7 @@ static void spaceWindowWrapper(bool &dSpaceWindow, shared_ptr<EventData> &evtDat
 }
 
 void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
-    MainScene &mainSceneFBO, FrameScene &frameSceneFBO, shared_ptr<EventData> &evtData, std::string& datafilepath,
+    BaseViewportFBO &mainSceneFBO, FrameViewportFBO &frameSceneFBO, shared_ptr<EventData> &evtData, std::string& datafilepath,
     std::string &video_name, bool &recording, std::string& datadirectory, bool &loadFile) {
 
     drawGUIDockspace();
@@ -683,12 +683,12 @@ void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_ma
  
         // Auto update controls
         dProcessingOptions |= ImGui::SliderFloat("FPS", &frameSceneFBO.getUpdateFPS(), 0, 100);
-        if (ImGui::Button("Play (Time period)") && frameSceneFBO.getAutoUpdate() == FrameScene::MANUAL_UPDATE) {
-            frameSceneFBO.getAutoUpdate() = FrameScene::TIME_AUTO_UPDATE;
+        if (ImGui::Button("Play (Time period)") && frameSceneFBO.getAutoUpdate() == FrameViewportFBO::MANUAL_UPDATE) {
+            frameSceneFBO.getAutoUpdate() = FrameViewportFBO::TIME_AUTO_UPDATE;
             frameSceneFBO.setLastRenderTime(glfwGetTime());
         }
-        if (ImGui::Button("Play (Events period)") && frameSceneFBO.getAutoUpdate() == FrameScene::MANUAL_UPDATE) {
-            frameSceneFBO.getAutoUpdate() = FrameScene::EVENT_AUTO_UPDATE;
+        if (ImGui::Button("Play (Events period)") && frameSceneFBO.getAutoUpdate() == FrameViewportFBO::MANUAL_UPDATE) {
+            frameSceneFBO.getAutoUpdate() = FrameViewportFBO::EVENT_AUTO_UPDATE;
             frameSceneFBO.setLastRenderTime(glfwGetTime());
         }
         frameSceneFBO.getUpdateFPS() = std::max(frameSceneFBO.getUpdateFPS(), 0.0f);

@@ -240,7 +240,7 @@ void EventData::drawBoundingBoxWireframe(MatrixStack &MV, MatrixStack &P, Progra
 
 /* THIS IS WITHOUT INSTANCING; DEPRECATED */
 void EventData::draw(MatrixStack &MV, MatrixStack &P, Program &prog,
-    float particleScale, const glm::vec3 &lightPos, const glm::vec3 &lightColor,
+    float particleScale, const glm::vec3 &lightPos,
     const BPMaterial &lightMat, const Mesh &meshSphere) { 
 
     prog.bind();

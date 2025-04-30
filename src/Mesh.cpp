@@ -87,7 +87,7 @@ void Mesh::loadMesh(const string &meshName) {
 				}
 
 				index_offset += fv;
-				shapes[s].mesh.material_ids[f];
+				// shapes[s].mesh.material_ids[f];
 			}
 		}
 	}
@@ -196,7 +196,7 @@ void Mesh::draw(Program& prog, bool instanced, size_t offset, size_t num_instanc
 
     int idx_ct = (int)posBuf.size() / 3;
     if (instanced) {
-        glDrawArraysInstanced(GL_TRIANGLES, offset, idx_ct, num_instances);
+        glDrawArraysInstanced(GL_TRIANGLES, (GLint)offset, (GLsizei)idx_ct, (GLsizei)num_instances);
     }
     else {
         glDrawArrays(GL_TRIANGLES, 0, idx_ct);
@@ -220,7 +220,7 @@ const unsigned Mesh::getPosBufID() const {
 	return posBufID;
 }
 
-const unsigned Mesh::getPosBufSize() const {
+const size_t Mesh::getPosBufSize() const {
     return posBuf.size();
 }
 

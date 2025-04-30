@@ -12,9 +12,9 @@
 
 #include <GL/glew.h>
 
-/**
- * An OpenGL Program (vertex and fragment shaders)
- */
+ /**
+  * @brief An OpenGL Program (vertex and fragment shaders)
+  */
 class Program
 {
 public:

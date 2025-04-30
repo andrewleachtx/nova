@@ -21,6 +21,11 @@ class Program;
  * - texBuf should be of length 2*ntris (if texture coords are available)
  * posBufID, norBufID, and texBufID are OpenGL buffer identifiers.
  */
+
+
+/**
+ * @brief A wrapper to a mesh (.obj) object. Stores necessary OpenGL information and implements draw calls interacting other classes.
+ */
 class Mesh
 {
 public:
@@ -33,7 +38,7 @@ public:
     void updatePosBuf(const std::vector<glm::vec3>& new_posBuf);
     void draw(Program& prog, bool instanced=false, size_t offset=0, size_t num_instances=0) const;
     const unsigned getPosBufID() const;
-    const unsigned getPosBufSize() const;
+    const size_t getPosBufSize() const;
     const unsigned getVAOID() const; 
 
     // ! These are not const getters, you could be updating ! //
