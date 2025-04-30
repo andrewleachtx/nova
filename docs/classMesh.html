@@ -76,6 +76,9 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
+<p>A wrapper to a mesh (.obj) object. Stores necessary OpenGL information and implements draw calls interacting other classes.  
+ <a href="classMesh.html#details">More...</a></p>
+
 <p><code>#include &lt;<a class="el" href="Mesh_8h_source.html">Mesh.h</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
@@ -98,9 +101,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>draw</b> (<a class="e
 <tr class="memitem:aafca833e7cdb0ee9fb92c8c6f9a8e1e7" id="r_aafca833e7cdb0ee9fb92c8c6f9a8e1e7"><td class="memItemLeft" align="right" valign="top"><a id="aafca833e7cdb0ee9fb92c8c6f9a8e1e7" name="aafca833e7cdb0ee9fb92c8c6f9a8e1e7"></a>
 const unsigned&#160;</td><td class="memItemRight" valign="bottom"><b>getPosBufID</b> () const</td></tr>
 <tr class="separator:aafca833e7cdb0ee9fb92c8c6f9a8e1e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac2714920e9e37952db2be8b3b9808678" id="r_ac2714920e9e37952db2be8b3b9808678"><td class="memItemLeft" align="right" valign="top"><a id="ac2714920e9e37952db2be8b3b9808678" name="ac2714920e9e37952db2be8b3b9808678"></a>
-const unsigned&#160;</td><td class="memItemRight" valign="bottom"><b>getPosBufSize</b> () const</td></tr>
-<tr class="separator:ac2714920e9e37952db2be8b3b9808678"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a59fee2109e52fccbcedc2fbdb86b4ea2" id="r_a59fee2109e52fccbcedc2fbdb86b4ea2"><td class="memItemLeft" align="right" valign="top"><a id="a59fee2109e52fccbcedc2fbdb86b4ea2" name="a59fee2109e52fccbcedc2fbdb86b4ea2"></a>
+const size_t&#160;</td><td class="memItemRight" valign="bottom"><b>getPosBufSize</b> () const</td></tr>
+<tr class="separator:a59fee2109e52fccbcedc2fbdb86b4ea2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9ec02396c98451d52614bf597c11350e" id="r_a9ec02396c98451d52614bf597c11350e"><td class="memItemLeft" align="right" valign="top"><a id="a9ec02396c98451d52614bf597c11350e" name="a9ec02396c98451d52614bf597c11350e"></a>
 const unsigned&#160;</td><td class="memItemRight" valign="bottom"><b>getVAOID</b> () const</td></tr>
 <tr class="separator:a9ec02396c98451d52614bf597c11350e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -121,7 +124,8 @@ glm::vec3&#160;</td><td class="memItemRight" valign="bottom"><b>getMaxXYZ</b> ()
 <tr class="separator:a4aada2e7e4c48602d3077ab16349804f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>A shape defined by a list of triangles</p><ul>
+<div class="textblock"><p>A wrapper to a mesh (.obj) object. Stores necessary OpenGL information and implements draw calls interacting other classes. </p>
+<p>A shape defined by a list of triangles</p><ul>
 <li>posBuf should be of length 3*ntris</li>
 <li>norBuf should be of length 3*ntris (if normals are available)</li>
 <li>texBuf should be of length 2*ntris (if texture coords are available) posBufID, norBufID, and texBufID are OpenGL buffer identifiers. </li>

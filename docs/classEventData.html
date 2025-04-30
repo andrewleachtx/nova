@@ -101,9 +101,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>initParticlesEmpty</b
 <tr class="memitem:a727327547e9b6d3dd37e8db09f1e6aa9" id="r_a727327547e9b6d3dd37e8db09f1e6aa9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classEventData.html#a727327547e9b6d3dd37e8db09f1e6aa9">drawBoundingBoxWireframe</a> (<a class="el" href="classMatrixStack.html">MatrixStack</a> &amp;MV, <a class="el" href="classMatrixStack.html">MatrixStack</a> &amp;P, <a class="el" href="classProgram.html">Program</a> &amp;progBasic)</td></tr>
 <tr class="memdesc:a727327547e9b6d3dd37e8db09f1e6aa9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Draw the bounding box wireframe for the event data.  <br /></td></tr>
 <tr class="separator:a727327547e9b6d3dd37e8db09f1e6aa9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a06d78268d8988ee855ccaa7e3fd80089" id="r_a06d78268d8988ee855ccaa7e3fd80089"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classEventData.html#a06d78268d8988ee855ccaa7e3fd80089">draw</a> (<a class="el" href="classMatrixStack.html">MatrixStack</a> &amp;MV, <a class="el" href="classMatrixStack.html">MatrixStack</a> &amp;P, <a class="el" href="classProgram.html">Program</a> &amp;prog, float particleScale, const glm::vec3 &amp;lightPos, const glm::vec3 &amp;lightColor, const <a class="el" href="classBPMaterial.html">BPMaterial</a> &amp;lightMat, const <a class="el" href="classMesh.html">Mesh</a> &amp;meshSphere)</td></tr>
-<tr class="memdesc:a06d78268d8988ee855ccaa7e3fd80089"><td class="mdescLeft">&#160;</td><td class="mdescRight">Draw event data particles in serial with each particle as a sphere mesh.  <br /></td></tr>
-<tr class="separator:a06d78268d8988ee855ccaa7e3fd80089"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aee6bd5887b455dc7bd868522a483c7cb" id="r_aee6bd5887b455dc7bd868522a483c7cb"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classEventData.html#aee6bd5887b455dc7bd868522a483c7cb">draw</a> (<a class="el" href="classMatrixStack.html">MatrixStack</a> &amp;MV, <a class="el" href="classMatrixStack.html">MatrixStack</a> &amp;P, <a class="el" href="classProgram.html">Program</a> &amp;prog, float particleScale, const glm::vec3 &amp;lightPos, const <a class="el" href="classBPMaterial.html">BPMaterial</a> &amp;lightMat, const <a class="el" href="classMesh.html">Mesh</a> &amp;meshSphere)</td></tr>
+<tr class="memdesc:aee6bd5887b455dc7bd868522a483c7cb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Draw event data particles in serial with each particle as a sphere mesh.  <br /></td></tr>
+<tr class="separator:aee6bd5887b455dc7bd868522a483c7cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a83536573c2aff61cc8ee998cac61bc19" id="r_a83536573c2aff61cc8ee998cac61bc19"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classEventData.html#a83536573c2aff61cc8ee998cac61bc19">drawInstanced</a> (<a class="el" href="classMatrixStack.html">MatrixStack</a> &amp;MV, <a class="el" href="classMatrixStack.html">MatrixStack</a> &amp;P, <a class="el" href="classProgram.html">Program</a> &amp;progInst, <a class="el" href="classProgram.html">Program</a> &amp;progBasic, float particleScale)</td></tr>
 <tr class="memdesc:a83536573c2aff61cc8ee998cac61bc19"><td class="mdescLeft">&#160;</td><td class="mdescRight">Draw event data particles with instancing using gl primitive points.  <br /></td></tr>
 <tr class="separator:a83536573c2aff61cc8ee998cac61bc19"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -209,8 +209,8 @@ static uint&#160;</td><td class="memItemRight" valign="bottom"><b>modFreq</b> = 
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Primary wrapper class to store point cloud event data read in from a .aedat4 file. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
-<a id="a06d78268d8988ee855ccaa7e3fd80089" name="a06d78268d8988ee855ccaa7e3fd80089"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a06d78268d8988ee855ccaa7e3fd80089">&#9670;&#160;</a></span>draw()</h2>
+<a id="aee6bd5887b455dc7bd868522a483c7cb" name="aee6bd5887b455dc7bd868522a483c7cb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aee6bd5887b455dc7bd868522a483c7cb">&#9670;&#160;</a></span>draw()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -244,12 +244,6 @@ static uint&#160;</td><td class="memItemRight" valign="bottom"><b>modFreq</b> = 
           <td></td>
           <td class="paramtype">const glm::vec3 &amp;&#160;</td>
           <td class="paramname"><em>lightPos</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const glm::vec3 &amp;&#160;</td>
-          <td class="paramname"><em>lightColor</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>

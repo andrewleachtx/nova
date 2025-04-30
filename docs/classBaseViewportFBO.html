@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>NOVA: MainScene Class Reference</title>
+<title>NOVA: BaseViewportFBO Class Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -71,61 +71,68 @@ $(function() {
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
-<a href="classMainScene-members.html">List of all members</a>  </div>
-  <div class="headertitle"><div class="title">MainScene Class Reference</div></div>
+<a href="classBaseViewportFBO-members.html">List of all members</a>  </div>
+  <div class="headertitle"><div class="title">BaseViewportFBO Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Base class for docking viewports using a Framebuffer Object (FBO) used for render to texture.  
+ <a href="classBaseViewportFBO.html#details">More...</a></p>
+
+<p><code>#include &lt;<a class="el" href="MainScene_8h_source.html">MainScene.h</a>&gt;</code></p>
 <div class="dynheader">
-Inheritance diagram for MainScene:</div>
+Inheritance diagram for BaseViewportFBO:</div>
 <div class="dyncontent">
  <div class="center">
-  <img src="classMainScene.png" usemap="#MainScene_map" alt=""/>
-  <map id="MainScene_map" name="MainScene_map">
-<area href="classFrameScene.html" alt="FrameScene" shape="rect" coords="0,56,84,80"/>
+  <img src="classBaseViewportFBO.png" usemap="#BaseViewportFBO_map" alt=""/>
+  <map id="BaseViewportFBO_map" name="BaseViewportFBO_map">
+<area href="classFrameViewportFBO.html" title="Derived class of BaseViewportFBO. This class is used to render the digital coded exposure viewport." alt="FrameViewportFBO" shape="rect" coords="0,56,124,80"/>
   </map>
 </div></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a1f437b63d9140e7d275b31b169e31c03" id="r_a1f437b63d9140e7d275b31b169e31c03"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMainScene.html#a1f437b63d9140e7d275b31b169e31c03">initialize</a> (int width, int height, bool frame=false)</td></tr>
-<tr class="memdesc:a1f437b63d9140e7d275b31b169e31c03"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initialize the FBO with the specifications of the GLFW frame.  <br /></td></tr>
-<tr class="separator:a1f437b63d9140e7d275b31b169e31c03"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afb84be96765a068239d7912bc1af3a18" id="r_afb84be96765a068239d7912bc1af3a18"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMainScene.html#afb84be96765a068239d7912bc1af3a18">resize</a> (int width, int height, bool frame=false)</td></tr>
-<tr class="memdesc:afb84be96765a068239d7912bc1af3a18"><td class="mdescLeft">&#160;</td><td class="mdescRight">Resizes / reinitializes with the callback on user resize.  <br /></td></tr>
-<tr class="separator:afb84be96765a068239d7912bc1af3a18"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a74c9761976b7e69d4e441c8428b15302" id="r_a74c9761976b7e69d4e441c8428b15302"><td class="memItemLeft" align="right" valign="top"><a id="a74c9761976b7e69d4e441c8428b15302" name="a74c9761976b7e69d4e441c8428b15302"></a>
+<tr class="memitem:aef4280d6ce5916e6c995dc11bf3802c5" id="r_aef4280d6ce5916e6c995dc11bf3802c5"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classBaseViewportFBO.html#aef4280d6ce5916e6c995dc11bf3802c5">initialize</a> (int width, int height, bool frame=false)</td></tr>
+<tr class="memdesc:aef4280d6ce5916e6c995dc11bf3802c5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initialize the FBO with the specifications of the GLFW frame.  <br /></td></tr>
+<tr class="separator:aef4280d6ce5916e6c995dc11bf3802c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae1ac5aed947f83ba72c6dd5bebeb9805" id="r_ae1ac5aed947f83ba72c6dd5bebeb9805"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classBaseViewportFBO.html#ae1ac5aed947f83ba72c6dd5bebeb9805">resize</a> (int width, int height, bool frame=false)</td></tr>
+<tr class="memdesc:ae1ac5aed947f83ba72c6dd5bebeb9805"><td class="mdescLeft">&#160;</td><td class="mdescRight">Resizes / reinitializes with the callback on user resize.  <br /></td></tr>
+<tr class="separator:ae1ac5aed947f83ba72c6dd5bebeb9805"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae214fa7cf57fc91f2e66ac288f65c35c" id="r_ae214fa7cf57fc91f2e66ac288f65c35c"><td class="memItemLeft" align="right" valign="top"><a id="ae214fa7cf57fc91f2e66ac288f65c35c" name="ae214fa7cf57fc91f2e66ac288f65c35c"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>bind</b> () const</td></tr>
-<tr class="memdesc:a74c9761976b7e69d4e441c8428b15302"><td class="mdescLeft">&#160;</td><td class="mdescRight">Binds the FBO for rendering. This is necessary to render to the texture. <br /></td></tr>
-<tr class="separator:a74c9761976b7e69d4e441c8428b15302"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6fe82d208b1bc465f0132013f6610bbd" id="r_a6fe82d208b1bc465f0132013f6610bbd"><td class="memItemLeft" align="right" valign="top"><a id="a6fe82d208b1bc465f0132013f6610bbd" name="a6fe82d208b1bc465f0132013f6610bbd"></a>
+<tr class="memdesc:ae214fa7cf57fc91f2e66ac288f65c35c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Binds the FBO for rendering. This is necessary to render to the texture. <br /></td></tr>
+<tr class="separator:ae214fa7cf57fc91f2e66ac288f65c35c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7b531ff91e76a04daea667e64a89aa3a" id="r_a7b531ff91e76a04daea667e64a89aa3a"><td class="memItemLeft" align="right" valign="top"><a id="a7b531ff91e76a04daea667e64a89aa3a" name="a7b531ff91e76a04daea667e64a89aa3a"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>unbind</b> () const</td></tr>
-<tr class="memdesc:a6fe82d208b1bc465f0132013f6610bbd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Unbinds the FBO. This is necessary to render to the screen. <br /></td></tr>
-<tr class="separator:a6fe82d208b1bc465f0132013f6610bbd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a429ce2dcfdacf30d7259e8e87089e6c2" id="r_a429ce2dcfdacf30d7259e8e87089e6c2"><td class="memItemLeft" align="right" valign="top"><a id="a429ce2dcfdacf30d7259e8e87089e6c2" name="a429ce2dcfdacf30d7259e8e87089e6c2"></a>
+<tr class="memdesc:a7b531ff91e76a04daea667e64a89aa3a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Unbinds the FBO. This is necessary to render to the screen. <br /></td></tr>
+<tr class="separator:a7b531ff91e76a04daea667e64a89aa3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac0c85cab830d092ad2173aca1fb8b6ce" id="r_ac0c85cab830d092ad2173aca1fb8b6ce"><td class="memItemLeft" align="right" valign="top"><a id="ac0c85cab830d092ad2173aca1fb8b6ce" name="ac0c85cab830d092ad2173aca1fb8b6ce"></a>
 GLuint&#160;</td><td class="memItemRight" valign="bottom"><b>getColorTexture</b> () const</td></tr>
-<tr class="separator:a429ce2dcfdacf30d7259e8e87089e6c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a738303ada75b414185f164fc2fd7124e" id="r_a738303ada75b414185f164fc2fd7124e"><td class="memItemLeft" align="right" valign="top"><a id="a738303ada75b414185f164fc2fd7124e" name="a738303ada75b414185f164fc2fd7124e"></a>
+<tr class="separator:ac0c85cab830d092ad2173aca1fb8b6ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a10ef27915e9732cccccdd86fa24bdd8c" id="r_a10ef27915e9732cccccdd86fa24bdd8c"><td class="memItemLeft" align="right" valign="top"><a id="a10ef27915e9732cccccdd86fa24bdd8c" name="a10ef27915e9732cccccdd86fa24bdd8c"></a>
 GLuint&#160;</td><td class="memItemRight" valign="bottom"><b>getFBOwidth</b> () const</td></tr>
-<tr class="separator:a738303ada75b414185f164fc2fd7124e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8b5b519d75bacfbb64df272513e5b4f1" id="r_a8b5b519d75bacfbb64df272513e5b4f1"><td class="memItemLeft" align="right" valign="top"><a id="a8b5b519d75bacfbb64df272513e5b4f1" name="a8b5b519d75bacfbb64df272513e5b4f1"></a>
+<tr class="separator:a10ef27915e9732cccccdd86fa24bdd8c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a965e833a984717c7b9ab03c8e8f7172b" id="r_a965e833a984717c7b9ab03c8e8f7172b"><td class="memItemLeft" align="right" valign="top"><a id="a965e833a984717c7b9ab03c8e8f7172b" name="a965e833a984717c7b9ab03c8e8f7172b"></a>
 GLuint&#160;</td><td class="memItemRight" valign="bottom"><b>getFBOheight</b> () const</td></tr>
-<tr class="separator:a8b5b519d75bacfbb64df272513e5b4f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af50e736a65b97c0fec5384d4a501ef2f" id="r_af50e736a65b97c0fec5384d4a501ef2f"><td class="memItemLeft" align="right" valign="top"><a id="af50e736a65b97c0fec5384d4a501ef2f" name="af50e736a65b97c0fec5384d4a501ef2f"></a>
+<tr class="separator:a965e833a984717c7b9ab03c8e8f7172b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa486ae457a8bcab65a167a20fc4be3ba" id="r_aa486ae457a8bcab65a167a20fc4be3ba"><td class="memItemLeft" align="right" valign="top"><a id="aa486ae457a8bcab65a167a20fc4be3ba" name="aa486ae457a8bcab65a167a20fc4be3ba"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>getDirtyBit</b> ()</td></tr>
-<tr class="separator:af50e736a65b97c0fec5384d4a501ef2f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acc4a0075cc1f325c829042fdcfc1897c" id="r_acc4a0075cc1f325c829042fdcfc1897c"><td class="memItemLeft" align="right" valign="top"><a id="acc4a0075cc1f325c829042fdcfc1897c" name="acc4a0075cc1f325c829042fdcfc1897c"></a>
+<tr class="separator:aa486ae457a8bcab65a167a20fc4be3ba"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae03cda19a094326dfebb1ecf94e4f8f7" id="r_ae03cda19a094326dfebb1ecf94e4f8f7"><td class="memItemLeft" align="right" valign="top"><a id="ae03cda19a094326dfebb1ecf94e4f8f7" name="ae03cda19a094326dfebb1ecf94e4f8f7"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>setDirtyBit</b> (bool x)</td></tr>
-<tr class="separator:acc4a0075cc1f325c829042fdcfc1897c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="separator:ae03cda19a094326dfebb1ecf94e4f8f7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Member Function Documentation</h2>
-<a id="a1f437b63d9140e7d275b31b169e31c03" name="a1f437b63d9140e7d275b31b169e31c03"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a1f437b63d9140e7d275b31b169e31c03">&#9670;&#160;</a></span>initialize()</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Base class for docking viewports using a Framebuffer Object (FBO) used for render to texture. </p>
+</div><h2 class="groupheader">Member Function Documentation</h2>
+<a id="aef4280d6ce5916e6c995dc11bf3802c5" name="aef4280d6ce5916e6c995dc11bf3802c5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aef4280d6ce5916e6c995dc11bf3802c5">&#9670;&#160;</a></span>initialize()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">bool MainScene::initialize </td>
+          <td class="memname">bool BaseViewportFBO::initialize </td>
           <td>(</td>
           <td class="paramtype">int&#160;</td>
           <td class="paramname"><em>width</em>, </td>
@@ -163,14 +170,14 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>setDirtyBit</b> (bool
 
 </div>
 </div>
-<a id="afb84be96765a068239d7912bc1af3a18" name="afb84be96765a068239d7912bc1af3a18"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#afb84be96765a068239d7912bc1af3a18">&#9670;&#160;</a></span>resize()</h2>
+<a id="ae1ac5aed947f83ba72c6dd5bebeb9805" name="ae1ac5aed947f83ba72c6dd5bebeb9805"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae1ac5aed947f83ba72c6dd5bebeb9805">&#9670;&#160;</a></span>resize()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void MainScene::resize </td>
+          <td class="memname">void BaseViewportFBO::resize </td>
           <td>(</td>
           <td class="paramtype">int&#160;</td>
           <td class="paramname"><em>width</em>, </td>
