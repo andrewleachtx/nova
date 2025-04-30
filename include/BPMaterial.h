@@ -5,6 +5,9 @@
 #include <glm/glm.hpp>
 using glm::vec3;
 
+/**
+ * @brief Simple wrapper class for Blinn Phong materials and colors.
+ */
 class BPMaterial {
     public:
         vec3 ka, kd, ks;

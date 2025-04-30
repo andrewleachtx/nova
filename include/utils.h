@@ -9,16 +9,19 @@
 #include <memory>
 
 class Program;
-class MainScene;
+class BaseViewportFBO;
 class EventData;
 
+/**
+ * @brief Struct to hold context information for the GLFW window. This allows for callback functions to access information within other scopes.
+ */
 struct WindowContext {
     Camera* camera;
     bool* is_cursorVisible;
     bool* key_toggles;
     bool* is_mainViewportHovered;
-    MainScene* mainSceneFBO;
-    MainScene* frameSceneFBO;
+    BaseViewportFBO* mainSceneFBO;
+    BaseViewportFBO* frameSceneFBO;
 };
 
 std::string OpenFileDialog();
@@ -59,7 +62,7 @@ void drawGUIDockspace();
  * @param loadFile 
  */
 void drawGUI(const Camera& camera, float fps, float &particle_scale, bool &is_mainViewportHovered,
-    MainScene &mainSceneFBO, FrameScene &frameScenceFBO, std::shared_ptr<EventData> &evtData, std::string &datafilepath, 
+    BaseViewportFBO &mainSceneFBO, FrameViewportFBO &frameScenceFBO, std::shared_ptr<EventData> &evtData, std::string &datafilepath, 
     std::string &video_name, bool &recording, std::string& datadirectory, bool &loadFile);
 
 float randFloat();
