@@ -17,7 +17,9 @@ using namespace std;
 #endif
 
 // Constants
-const string cmd_format{"ffmpeg -y -f rawvideo -pix_fmt rgb24 -s %ux%u -i - -c:v libx264 -pix_fmt yuv420p -vf \"pad=ceil(iw/2)*2:ceil(ih/2)*2, vflip\" -r 30 -preset veryfast %s.mp4"}; // TODO make background process?
+
+// TODO make background process?
+static const string cmd_format {"ffmpeg -y -f rawvideo -pix_fmt rgb24 -s %ux%u -i - -c:v libx264 -pix_fmt yuv420p -vf \"pad=ceil(iw/2)*2:ceil(ih/2)*2, vflip\" -r 30 -preset veryfast %s.mp4"};
 
 // We can pass in a user pointer to callback functions - shouldn't require an updater; vars have inf lifespan
 GLFWwindow *g_window;
@@ -29,8 +31,8 @@ float g_fps, g_lastRenderTime(0.0f);
 string g_resourceDir, g_dataFilepath, g_dataDir;
 bool loadFile;
 
-MainScene g_mainSceneFBO;
-FrameScene g_frameSceneFBO;
+BaseViewportFBO g_mainSceneFBO;
+FrameViewportFBO g_frameSceneFBO;
 
 bool recording;
 string video_name;
@@ -44,7 +46,7 @@ Program g_progBasic, g_progInst, g_progFrame;
 glm::vec3 g_lightPos, g_lightCol;
 BPMaterial g_lightMat;
 
-// Maybe use unique_ptr
+// TODO: Maybe we want unique_ptr
 shared_ptr<EventData> g_eventData;
 
 float g_particleScale(0.75f);
@@ -182,16 +184,15 @@ static void render() {
     // FIXME: make method for this i.e. g_eventData->drawDCEFrame() ? render() easily gets bloated, this is fine though if we
     // don't have many more
     float nextUpdateTime = t - 1 / g_frameSceneFBO.getUpdateFPS();
-    if (g_frameSceneFBO.getAutoUpdate() != FrameScene::MANUAL_UPDATE && nextUpdateTime >= g_frameSceneFBO.getLastRenderTime()) {
-
-        if (g_frameSceneFBO.getAutoUpdate() == FrameScene::EVENT_AUTO_UPDATE) {
+    if (g_frameSceneFBO.getAutoUpdate() != FrameViewportFBO::MANUAL_UPDATE && nextUpdateTime >= g_frameSceneFBO.getLastRenderTime()) {
+        if (g_frameSceneFBO.getAutoUpdate() == FrameViewportFBO::EVENT_AUTO_UPDATE) {
             uint framePeriod = g_frameSceneFBO.getFramePeriod_E();
             uint frameStart = g_eventData->getEventWindow_L();
             uint frameEnd = g_eventData->getEventWindow_R();
             uint maxEvent = g_eventData->getMaxEvent() - 1;
 
             if (frameStart == frameEnd) { // TODO consider breaking when right bound reaches end
-                g_frameSceneFBO.getAutoUpdate() = FrameScene::MANUAL_UPDATE;
+                g_frameSceneFBO.getAutoUpdate() = FrameViewportFBO::MANUAL_UPDATE;
             }
             else {
                 g_eventData->getEventWindow_L() = glm::min(maxEvent, frameStart + framePeriod);
@@ -200,14 +201,14 @@ static void render() {
                 g_eventData->getTimeWindow_R() = g_eventData->getTimestamp(g_eventData->getEventWindow_R());
             }
         }
-        else if (g_frameSceneFBO.getAutoUpdate() == FrameScene::TIME_AUTO_UPDATE) {
+        else if (g_frameSceneFBO.getAutoUpdate() == FrameViewportFBO::TIME_AUTO_UPDATE) {
             float framePeriod = g_frameSceneFBO.getFramePeriod_T();
             float frameStart = g_eventData->getTimeWindow_L();
             float frameEnd = g_eventData->getTimeWindow_R();
             float maxTime = g_eventData->getMaxTimestamp();
 
             if (frameStart == frameEnd) { // TODO consider breaking when right bound reaches end
-                g_frameSceneFBO.getAutoUpdate() = FrameScene::MANUAL_UPDATE;
+                g_frameSceneFBO.getAutoUpdate() = FrameViewportFBO::MANUAL_UPDATE;
             }
             else {
                 g_eventData->getTimeWindow_L() = glm::min(maxTime, frameStart + framePeriod);

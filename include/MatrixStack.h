@@ -12,6 +12,9 @@
 #include <memory>
 #include <glm/fwd.hpp>
 
+/**
+ * @brief Mimics OpenGL's matrix stack functionality - makes necessary transforms for drawing easier.
+ */
 class MatrixStack
 {
 public:

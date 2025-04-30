@@ -26,7 +26,8 @@ See the [table of contents](#table-of-contents) for installation instructions.
     - [Building](#building)
 - [Running](#running)
   - [Using Visual Studio GUI](#using-visual-studio-gui)
-  - [run.ps1](#runps1)
+  - [run.bat (and run.ps1)](#runbat-and-runps1)
+- [Documentation](#documentation)
 - [TODO](#todo)
 - [Dependencies / References](#dependencies--references)
 
@@ -53,10 +54,12 @@ main
 ```
 
 ## Dependencies
-As a preface, you should
-1. Clone somewhere in your `C:` drive (so not in your `WSL` directory). Then if you use VSCode you can open a split terminal with powershell.exe on the left and WSL2 on the right.
+As a somewhat weird (and preference-based) preface for WSL users:
+1. Clone somewhere in your `C:` drive (so not in your `WSL`'s home directory). Then if you want, you can use VSCode you can open a split terminal with powershell.exe on the left and WSL2 on the right. See https://stackoverflow.com/a/76140598 for why.
 2. Try to run your `git` commands in a `WSL` terminal, not `PowerShell`, to prevent line carriage return [issues](https://docs.github.com/en/get-started/git-basics/configuring-git-to-handle-line-endings#re-normalizing-a-repository). `.gitattributes` exists, so this should be mitigated.
 3. Expect installs (i.e. `vcpkg`) to require a restart of the terminal / `VSCode` instance.
+
+Future work can feel free to remove #1 and #2, but beware of Git changing `CRLF <-> LF`.
 
 ### VCPKG
 You don't have to make/place it in `C:\Dev\`, that's just what I use because it is convenient.
@@ -113,17 +116,22 @@ You should create a `build` directory once everytime you make major changes, or 
 ## Using Visual Studio GUI
 If you want to use VS for debugging, you can run `explorer.exe .` in your terminal and open `build/`. You should see a `.sln` extension, like `nova.sln`. Double click that. I only use VS to debug sometimes as I personally just use CLI + VSCode to develop at this point.
 
-## run.ps1
-`.ps1` files are PowerShell scripts. Open PowerShell in the terminal (type `powershell.exe` if it isn't the native Windows VSCode terminal).
+## run.bat (and run.ps1)
+run.bat is a verbose Batch script that looks pretty. It makes the whole project for you essentially.
 
-Run `run.ps1`. You can look at it to see what it does.
+`.ps1` files are PowerShell scripts. Open PowerShell in the terminal (type `powershell.exe` if it isn't the native Windows VSCode terminal). Run `run.ps1`. You can look at it to see what it does, it reads more natural.
 
-# TODO
+# Documentation
+There should be hosted Doxygen documentation for the repository through GitHub actions. As of today, it is on https://andrewleachtx.github.io/nova/.
+
+# TODO 
 1. Make a `vcpkg.json` manifest? It is already a pretty simple vcpkg install though.
+2. This TODO list is not robust. See the GitHub issues on the repo, and other docs for feature requests.
 
 # Dependencies / References
 
 - [LANL](https://lanl.gov/) for project idea, guidance, and support with features and logic
-- [OpenGL](https://www.opengl.org/) and [Dear ImGui](https://github.com/ocornut/imgui)
+- [OpenGL](https://www.opengl.org/)
+- [Dear ImGui](https://github.com/ocornut/imgui)
 - Various other libraries as found in files (GLFW, GLEW, GLM, Eigen, CMake, dv-processing, fmt, ffmpeg, etc.)
 - [Dr. Shinjiro Sueda](https://people.engr.tamu.edu/sueda/index.html) for teaching us graphics and for any course-given skeleton code used in any cited files headers

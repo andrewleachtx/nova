@@ -70,7 +70,7 @@ class EventData {
          * @param meshSphere 
          */
         void draw(MatrixStack &MV, MatrixStack &P, Program &prog,
-            float particleScale, const glm::vec3 &lightPos, const glm::vec3 &lightColor,
+            float particleScale, const glm::vec3 &lightPos,
             const BPMaterial &lightMat, const Mesh &meshSphere);
             
         /**
@@ -84,8 +84,6 @@ class EventData {
         void drawInstanced(MatrixStack &MV, MatrixStack &P, Program &progInst, Program &progBasic,
             float particleScale);
         
-        
-                
         /**
          * @brief Computes the weight of valid events (within shutter) and passes them into the vertex to render DCE
          * @param prog bound to access the associated shaders and uniforms
@@ -172,7 +170,7 @@ class EventData {
         uint eventWindow_L;
         uint eventWindow_R;
 
-        // Maybe move to FrameScene or own helper struct
+        // Maybe move to FrameViewportFBO or own helper struct
         int shutterType;
         float timeShutterWindow_L;
         float timeShutterWindow_R;

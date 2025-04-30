@@ -2,9 +2,9 @@
 #include <iostream>
 #include <GL/glew.h>
 
-MainScene::MainScene() : fbo(0), colorTexture(0), depthRBO(0), width(0), height(0), dirtyBit(false) {}
+BaseViewportFBO::BaseViewportFBO() : fbo(0), colorTexture(0), depthRBO(0), width(0), height(0), dirtyBit(false) {}
 
-MainScene::~MainScene() {
+BaseViewportFBO::~BaseViewportFBO() {
     if (fbo != 0) {
         glDeleteFramebuffers(1, &fbo);
     }
@@ -16,7 +16,7 @@ MainScene::~MainScene() {
     }
 }
 
-bool MainScene::initialize(int w, int h, bool frame) {
+bool BaseViewportFBO::initialize(int w, int h, bool frame) {
     dirtyBit = true;
     
     width = w;
@@ -56,18 +56,18 @@ bool MainScene::initialize(int w, int h, bool frame) {
     return true;
 }
 
-void MainScene::resize(int w, int h, bool frame) { // FIXME use overriding/hiding
+void BaseViewportFBO::resize(int w, int h, bool frame) { // FIXME use overriding/hiding
     initialize(w, h, frame);
 }
 
-void MainScene::bind() const {
+void BaseViewportFBO::bind() const {
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 }
 
-void MainScene::unbind() const {
+void BaseViewportFBO::unbind() const {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-GLuint MainScene::getColorTexture() const {
+GLuint BaseViewportFBO::getColorTexture() const {
     return colorTexture;
 }

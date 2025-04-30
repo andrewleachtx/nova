@@ -38,8 +38,6 @@ output/
 .vs/
 *.zip
 *.tar.gz
-linux/
-win32/
 
 package/
 docs/

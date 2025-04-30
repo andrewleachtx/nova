@@ -3,25 +3,28 @@
 // #include <GL/glew.h>
 
 /*
-    Derived class of MainScene.
+    Derived class of BaseViewportFBO.
     Includes attributes and members (getters/setters) specifically relating to the digital 
     coded exposure viewport.
 */
 
-class FrameScene: public MainScene {
+/**
+ * @brief Derived class of BaseViewportFBO. This class is used to render the digital coded exposure viewport.
+ */
+class FrameViewportFBO : public BaseViewportFBO {
 public:
-    FrameScene() : MainScene::MainScene(), morlet(false), pca(false),
+    FrameViewportFBO() : BaseViewportFBO::BaseViewportFBO(), morlet(false), pca(false),
         autoUpdate(false), freq(0.01f), fps(0.0f), 
         framePeriod_T(0.0f), framePeriod_E(0)  {}
-    ~FrameScene() {}
+    ~FrameViewportFBO() {}
 
     /**
-     * @brief Calls MainScene's initialize function and specifies the correct datatype to be used
+     * @brief Calls BaseViewportFBO's initialize function and specifies the correct datatype to be used
      * @param inputWidth 
      * @param inputHeight 
      * @return boolean whether initialization succeeded
      */
-    bool initialize(int inputWidth, int inputHeight) { return MainScene::initialize(inputWidth, inputHeight, true); };
+    bool initialize(int inputWidth, int inputHeight) { return BaseViewportFBO::initialize(inputWidth, inputHeight, true); };
     
     /**
      * @brief Used by utils/drawGUI to allow for changing back into time from specified unit of time

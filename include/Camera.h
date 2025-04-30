@@ -18,7 +18,10 @@
 
 class MatrixStack;
 
-// TODO: Bring old FreeCam logic back with toggle to switch?
+
+/**
+ * @brief Handler class for movement, modelview and projection matrices, as well as user event callbacks.
+ */
 class Camera {
     enum {
 		ROTATE = 0,

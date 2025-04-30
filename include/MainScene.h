@@ -8,11 +8,14 @@
 
     This way main.cpp isn't flooded with more boilerplate.
 */
-// TODO: Best renamed to just FBOWrapper or FBO
-class MainScene {
+
+/**
+ * @brief Base class for docking viewports using a Framebuffer Object (FBO) used for render to texture.
+ */
+class BaseViewportFBO {
 public:
-    MainScene();
-    ~MainScene();
+    BaseViewportFBO();
+    ~BaseViewportFBO();
 
     /**
      * @brief Initialize the FBO with the specifications of the GLFW frame.

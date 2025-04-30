@@ -9,6 +9,9 @@
     setting attributes such as ignore_polarity.
 */
 
+/**
+ * @brief Standardized base class for contribution functions made for extending functionality.
+ */
 class BaseFunc {
     public:
         BaseFunc() {};
@@ -30,7 +33,10 @@ class BaseFunc {
 
 };
 
-class MorletFunc: public BaseFunc {
+/**
+ * @brief Derived from BaseFunc: handles Morlet shutter functions.
+ */
+class MorletFunc : public BaseFunc {
     public:
         MorletFunc(float f, float center_t): BaseFunc(), f(f), center_t(center_t) {};
         ~MorletFunc() override = default;
